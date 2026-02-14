@@ -1,27 +1,18 @@
 # ======================================================
 # src/ui/app_core_selection_cible.py  (COMPLET)
-# ✅ Micro-modif demandée : on stocke AUSSI la couleur de chaque zone/coupe
-#    (sans changer le design ni le fonctionnement)
+# ✅ Cache ciblé "par dataset" (Streamlit Cloud safe)
+# - On utilise st.session_state["data_hash"][kind] comme clé
+# - Pas de st.cache_data.clear() global
+# - On propage aussi une clé au reader via mtime (= hash -> float stable)
 #
-# ✅ MODIF (JSON-only) :
-# - CoupesManager ne prend plus workbook_path => on ne lui passe plus jamais.
-# - render_selection_cibles garde cst_workbook_path en param pour compat legacy,
-#   mais il est ignoré pour le manager.
-#
-# ✅ PATCH IDENTIQUE à app_core_topo (BIEN appliqué) :
-# - on lit LES POINTS depuis la source active (cst_workbook_path si valide),
-#   sinon fallback Mesures Completes
-# - cache busting avec `dummy` : mtime = stat().st_mtime + dummy
-#
-# ✅ FIX IMPORTANT (pour éviter le "pas à jour" côté sélection) :
-# - on propage `mtime` dans list_targets_in_mesures / read_targets_timeseries
-#   afin d'invalider aussi le cache LRU du reader.
+# ✅ Micro-modif conservée : on stocke AUSSI la couleur de chaque zone/coupe
 # ======================================================
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Optional, Tuple
+import hashlib
 
 import numpy as np
 import pandas as pd
@@ -29,6 +20,43 @@ import streamlit as st
 
 from src.io.coupes_manager import CoupesManager, Coupe
 from src.pipeline.mesures_completes_reader import list_targets_in_mesures, read_targets_timeseries
+
+
+# ------------------------------------------------------
+# Dataset key used to invalidate only Selection-Cibles points cache
+# ------------------------------------------------------
+# Par défaut on suit l'import "topo" (car tu importes topo/inclino dans ton core_import).
+# Si tes points viennent d'un import "mesures", remplace par "mesures".
+DATASET_KIND_FOR_POINTS = "topo"
+
+
+def _get_dataset_hash(kind: str) -> str:
+    dh = st.session_state.get("data_hash", {})
+    if isinstance(dh, dict):
+        v = dh.get(kind, "")
+        return str(v or "")
+    return ""
+
+
+def _hash_to_float(sig: str) -> float:
+    """
+    Le reader actuel prend un `mtime: float` pour casser ses caches.
+    Sur Cloud, `stat().st_mtime` est parfois non fiable.
+    On transforme donc un hash (hex) en float stable.
+
+    On garde une plage raisonnable (<= 1e12) pour éviter des floats trop grands.
+    """
+    if not sig:
+        return 0.0
+    try:
+        # prend 12 hex chars -> 48 bits
+        n = int(sig[:12], 16)
+        return float(n)
+    except Exception:
+        # fallback via sha1 du string
+        h = hashlib.sha1(sig.encode("utf-8")).hexdigest()
+        n = int(h[:12], 16)
+        return float(n)
 
 
 # ------------------------------------------------------
@@ -84,7 +112,6 @@ def _find_mesures_completes_xlsx(common_data_dir: Path) -> Optional[Path]:
 
 def _resolve_points_workbook(cst_workbook_path: str | None) -> Optional[Path]:
     """
-    ✅ PATCH (comme topo) :
     - si cst_workbook_path est fourni et pointe vers un .xlsx existant -> on l'utilise
     - sinon -> fallback Mesures Completes dans data/common_data
     """
@@ -177,13 +204,24 @@ def _last_xyz(df: pd.DataFrame) -> Optional[Tuple[float, float, float]]:
 
 
 @st.cache_data(show_spinner=False)
-def _load_points_fit_cached(workbook_path: str, mtime: float, W: int, H: int) -> list[dict[str, Any]]:
-    # ✅ `mtime` est volontairement dans la signature => clé de cache Streamlit
-    # ✅ IMPORTANT : on propage aussi mtime au reader (sinon lru_cache peut garder l'ancien excel)
-    names = list_targets_in_mesures(workbook_path, sheet_name=None, mtime=mtime)
+def _load_points_fit_cached(
+    workbook_path: str,
+    cache_key: str,
+    W: int,
+    H: int,
+) -> list[dict[str, Any]]:
+    """
+    ✅ cache_key = signature du dataset (par ex hash import topo)
+    => invalide UNIQUEMENT quand CE fichier change.
+
+    On le propage aussi en `mtime` au reader pour casser son lru_cache.
+    """
+    mtime_like = _hash_to_float(cache_key)
+
+    names = list_targets_in_mesures(workbook_path, sheet_name=None, mtime=mtime_like)
     if not names:
         return []
-    ts = read_targets_timeseries(workbook_path, names, sheet_name=None, mtime=mtime)
+    ts = read_targets_timeseries(workbook_path, names, sheet_name=None, mtime=mtime_like)
 
     rows: list[tuple[str, float, float, float]] = []
     for name, df in ts.items():
@@ -207,7 +245,7 @@ def _load_points_fit_cached(workbook_path: str, mtime: float, W: int, H: int) ->
 
 
 # ------------------------------------------------------
-# Zone colors (inchangé côté design: même palette)
+# Zone colors (inchangé côté design)
 # ------------------------------------------------------
 _ZONE_PALETTE = ["#146EFF", "#22C55E", "#F97316", "#A855F7", "#EF4444", "#06B6D4", "#EAB308", "#EC4899"]
 
@@ -251,7 +289,6 @@ def _apply_snapshot(
         targets_final = [str(x).strip() for x in (targets or []) if str(x).strip()]
         targets_final = sorted(set(targets_final), key=lambda x: x.lower())
 
-        # ✅ la couleur de zone telle qu'affichée dans le front
         color_final = str(zone_color_by_ui.get(ui, "") or "").strip()
 
         angle_changed = float(getattr(c, "angle_deg", 0.0) or 0.0) != float(angle_final)
@@ -291,7 +328,7 @@ def render_selection_cibles(
 ) -> None:
     W, H = 1200, 680
 
-    # ✅ JSON-only : cst_workbook_path ignoré pour le manager
+    # JSON-only : cst_workbook_path ignoré pour le manager
     _ = zone_name
     mgr = CoupesManager()
     coupes = mgr.list_coupes()
@@ -299,7 +336,6 @@ def render_selection_cibles(
         st.warning("Aucune coupe dans le JSON.")
         return
 
-    # ✅ Zones + map couleur
     zones: list[dict[str, Any]] = []
     zone_color_by_ui: dict[int, str] = {}
 
@@ -320,15 +356,30 @@ def render_selection_cibles(
             }
         )
 
-    # ✅ PATCH “comme topo” : points = fichier source actif, pas auto-find systématique
+    # Points workbook
     points_workbook = _resolve_points_workbook(cst_workbook_path)
 
+    # ✅ clé ciblée issue de l'import (ne touche pas les autres caches)
+    # - si non définie, on fallback sur dummy + mtime du fichier
+    dataset_hash = _get_dataset_hash(DATASET_KIND_FOR_POINTS)
+
     points: list[dict[str, Any]] = []
-    mtime_used: float | None = None
+    cache_key_used: str | None = None
+    points_path_used: str | None = None
+
     if points_workbook and points_workbook.exists():
-        # ✅ PATCH cache busting identique topo
-        mtime_used = float(points_workbook.stat().st_mtime) + float(dummy or 0)
-        points = _load_points_fit_cached(str(points_workbook), mtime_used, W, H)
+        points_path_used = str(points_workbook)
+
+        if dataset_hash:
+            # Cache busting "béton" cloud-safe
+            cache_key_used = dataset_hash
+        else:
+            # fallback (au cas où import non passé par data_hash)
+            # dummy permet de forcer un refresh manuel.
+            mtime = float(points_workbook.stat().st_mtime)
+            cache_key_used = f"mtime:{mtime:.6f}|dummy:{int(dummy or 0)}|path:{points_path_used}"
+
+        points = _load_points_fit_cached(points_path_used, cache_key_used, W, H)
 
     data = {"w": W, "h": H, "zones": zones, "points": points}
 
@@ -356,8 +407,10 @@ def render_selection_cibles(
             {
                 "ret": ret,
                 "cst_workbook_path": cst_workbook_path,
-                "points_workbook_used": str(points_workbook) if points_workbook else None,
-                "mtime_used": mtime_used,
+                "points_workbook_used": points_path_used,
+                "dataset_kind_for_points": DATASET_KIND_FOR_POINTS,
+                "dataset_hash": dataset_hash or None,
+                "cache_key_used": cache_key_used,
                 "dummy": dummy,
                 "nb_points": len(points),
                 "nb_coupes": len(coupes),
