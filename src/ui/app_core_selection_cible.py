@@ -6,7 +6,16 @@
 # ✅ MODIF (JSON-only) :
 # - CoupesManager ne prend plus workbook_path => on ne lui passe plus jamais.
 # - render_selection_cibles garde cst_workbook_path en param pour compat legacy,
-#   mais il est ignoré.
+#   mais il est ignoré pour le manager.
+#
+# ✅ PATCH IDENTIQUE à app_core_topo (BIEN appliqué) :
+# - on lit LES POINTS depuis la source active (cst_workbook_path si valide),
+#   sinon fallback Mesures Completes
+# - cache busting avec `dummy` : mtime = stat().st_mtime + dummy
+#
+# ✅ FIX IMPORTANT (pour éviter le "pas à jour" côté sélection) :
+# - on propage `mtime` dans list_targets_in_mesures / read_targets_timeseries
+#   afin d'invalider aussi le cache LRU du reader.
 # ======================================================
 
 from __future__ import annotations
@@ -71,6 +80,32 @@ def _find_mesures_completes_xlsx(common_data_dir: Path) -> Optional[Path]:
         return None
     cands.sort(key=lambda x: x.stat().st_mtime, reverse=True)
     return cands[0]
+
+
+def _resolve_points_workbook(cst_workbook_path: str | None) -> Optional[Path]:
+    """
+    ✅ PATCH (comme topo) :
+    - si cst_workbook_path est fourni et pointe vers un .xlsx existant -> on l'utilise
+    - sinon -> fallback Mesures Completes dans data/common_data
+    """
+    root = _project_root()
+
+    if cst_workbook_path:
+        p = Path(cst_workbook_path).expanduser()
+        if not p.is_absolute():
+            p = (root / p).resolve()
+        else:
+            p = p.resolve()
+
+        if p.exists() and p.is_file() and p.suffix.lower() == ".xlsx":
+            return p
+
+    common = _common_data_dir()
+    mp = _find_mesures_completes_xlsx(common)
+    if mp and mp.exists():
+        return mp
+
+    return None
 
 
 # ------------------------------------------------------
@@ -143,10 +178,12 @@ def _last_xyz(df: pd.DataFrame) -> Optional[Tuple[float, float, float]]:
 
 @st.cache_data(show_spinner=False)
 def _load_points_fit_cached(workbook_path: str, mtime: float, W: int, H: int) -> list[dict[str, Any]]:
-    names = list_targets_in_mesures(workbook_path, sheet_name=None)
+    # ✅ `mtime` est volontairement dans la signature => clé de cache Streamlit
+    # ✅ IMPORTANT : on propage aussi mtime au reader (sinon lru_cache peut garder l'ancien excel)
+    names = list_targets_in_mesures(workbook_path, sheet_name=None, mtime=mtime)
     if not names:
         return []
-    ts = read_targets_timeseries(workbook_path, names, sheet_name=None)
+    ts = read_targets_timeseries(workbook_path, names, sheet_name=None, mtime=mtime)
 
     rows: list[tuple[str, float, float, float]] = []
     for name, df in ts.items():
@@ -220,7 +257,6 @@ def _apply_snapshot(
         angle_changed = float(getattr(c, "angle_deg", 0.0) or 0.0) != float(angle_final)
         targets_changed = list(getattr(c, "targets", []) or []) != list(targets_final)
 
-        # ✅ on déclenche aussi l'écriture si seule la couleur change (si supportée)
         prev_color = str(getattr(c, "color", "") or "").strip()
         color_changed = prev_color != color_final and color_final != ""
 
@@ -234,7 +270,6 @@ def _apply_snapshot(
             ui_idx=ui,
         )
 
-        # ✅ compat: si Coupe n'a pas encore le champ, setattr ne casse rien
         try:
             setattr(cnew, "color", color_final)
         except Exception:
@@ -256,15 +291,15 @@ def render_selection_cibles(
 ) -> None:
     W, H = 1200, 680
 
-    # ✅ JSON-only : on ignore totalement cst_workbook_path
-    _ = cst_workbook_path  # compat legacy / évite "unused"
+    # ✅ JSON-only : cst_workbook_path ignoré pour le manager
+    _ = zone_name
     mgr = CoupesManager()
     coupes = mgr.list_coupes()
     if not coupes:
         st.warning("Aucune coupe dans le JSON.")
         return
 
-    # ✅ Zones + map couleur (micro-modif: on garde la couleur par ui_idx)
+    # ✅ Zones + map couleur
     zones: list[dict[str, Any]] = []
     zone_color_by_ui: dict[int, str] = {}
 
@@ -273,7 +308,7 @@ def render_selection_cibles(
         zid = str(ui)
         col = _zone_color(i)
 
-        zone_color_by_ui[ui] = col  # ✅ stocke couleur pour l'écriture JSON
+        zone_color_by_ui[ui] = col
 
         zones.append(
             {
@@ -285,24 +320,21 @@ def render_selection_cibles(
             }
         )
 
-    common = _common_data_dir()
-    mesures_path = _find_mesures_completes_xlsx(common)
+    # ✅ PATCH “comme topo” : points = fichier source actif, pas auto-find systématique
+    points_workbook = _resolve_points_workbook(cst_workbook_path)
 
     points: list[dict[str, Any]] = []
-    if mesures_path and mesures_path.exists():
-        points = _load_points_fit_cached(
-            str(mesures_path),
-            float(mesures_path.stat().st_mtime),
-            W,
-            H,
-        )
+    mtime_used: float | None = None
+    if points_workbook and points_workbook.exists():
+        # ✅ PATCH cache busting identique topo
+        mtime_used = float(points_workbook.stat().st_mtime) + float(dummy or 0)
+        points = _load_points_fit_cached(str(points_workbook), mtime_used, W, H)
 
     data = {"w": W, "h": H, "zones": zones, "points": points}
 
     selection_cibles_component = _import_selection_component()
     ret = selection_cibles_component(data=data, key="selection_cibles_component_main")
 
-    # Inchangé : on attend le même event "front_button" qui renvoie snapshot
     if isinstance(ret, dict) and ret.get("type") == "front_button":
         snapshot = ret.get("snapshot")
         if not isinstance(snapshot, list):
@@ -319,12 +351,14 @@ def render_selection_cibles(
         except Exception as e:
             st.error(f"Erreur écriture JSON: {type(e).__name__}: {e}")
 
-    # Debug (inchangé, repliable)
     with st.expander("Debug", expanded=False):
         st.write(
             {
                 "ret": ret,
-                "mesures_path": str(mesures_path) if mesures_path else None,
+                "cst_workbook_path": cst_workbook_path,
+                "points_workbook_used": str(points_workbook) if points_workbook else None,
+                "mtime_used": mtime_used,
+                "dummy": dummy,
                 "nb_points": len(points),
                 "nb_coupes": len(coupes),
             }

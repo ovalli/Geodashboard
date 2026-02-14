@@ -156,7 +156,7 @@ NAV_CST = "Coupes"  # ✅ on garde le menu
 NAV_3D = "3D"
 NAV_PARAM = "Paramétrage"
 NAV_TOPO = "Projections topographiques"
-NAV_SEL_CIBLES = "Sélection des cibles"
+NAV_SEL_CIBLES = "Sélection des zones"
 NAV_INCL = "Inclinomètres"
 NAV_IMPORT = "Import"
 NAV_EXPORT = "Export"
@@ -352,9 +352,9 @@ if selected_page == NAV_TOPO:
     render_topo_projections("GLOBAL", str(mesures_path), 0)
     st.stop()
 
-# --- Sélection des cibles (JSON-only)
+# --- Sélection des zones (JSON-only)
 if selected_page == NAV_SEL_CIBLES:
-    st.subheader("Sélection des cibles")
+    st.subheader("Sélection des zones")
     render_selection_cibles("GLOBAL", None, 0)
     st.stop()
 

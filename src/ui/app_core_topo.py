@@ -1495,32 +1495,71 @@ def render_topo_projections(selected_xlsx: str, xlsx_abs_path: str, force_key: i
     # The caller (app.py) is responsible for the page title/subheader.
 
     root = _project_root()
-    common_data_dir = root / "data" / "common_data"
-    mesures_path = _find_mesures_completes_xlsx(common_data_dir)
 
-    if mesures_path is None or not mesures_path.exists():
-        st.error(
-            "Fichier 'Mesures Completes' introuvable dans data/common_data.\n\n"
-            f"Dossier attendu : {common_data_dir}"
-        )
-        return
+    # 1) ✅ Priorité: fichier fourni par la page (xlsx_abs_path)
+    workbook_path: Optional[Path] = None
 
-    # cache busting with force_key (kept)
-    mtime = float(mesures_path.stat().st_mtime) + float(force_key or 0)
+    if xlsx_abs_path:
+        p = Path(xlsx_abs_path).expanduser()
+        if not p.is_absolute():
+            p = (root / p).resolve()
+        else:
+            p = p.resolve()
+        if p.exists() and p.is_file() and p.suffix.lower() == ".xlsx":
+            workbook_path = p
 
-    # silence unused
-    _ = selected_xlsx
-    _ = xlsx_abs_path
+    # 2) ✅ Sinon, tentative via selected_xlsx (si la page passe juste un nom/chemin relatif)
+    if workbook_path is None and selected_xlsx:
+        q = Path(selected_xlsx).expanduser()
+        if not q.is_absolute():
+            q1 = (root / q).resolve()
+            if q1.exists() and q1.is_file() and q1.suffix.lower() == ".xlsx":
+                workbook_path = q1
+            else:
+                # emplacements classiques dans GeoDashboard
+                for base in [
+                    root,
+                    root / "data",
+                    root / "data" / "common_data",
+                    root / "data" / "topo",
+                ]:
+                    qq = (base / q.name).resolve()
+                    if qq.exists() and qq.is_file() and qq.suffix.lower() == ".xlsx":
+                        workbook_path = qq
+                        break
+        else:
+            q = q.resolve()
+            if q.exists() and q.is_file() and q.suffix.lower() == ".xlsx":
+                workbook_path = q
+
+    # 3) ✅ Fallback historique: Mesures Completes dans data/common_data
+    if workbook_path is None:
+        common_data_dir = root / "data" / "common_data"
+        mesures_path = _find_mesures_completes_xlsx(common_data_dir)
+
+        if mesures_path is None or not mesures_path.exists():
+            st.error(
+                "Fichier Excel introuvable.\n\n"
+                f"- Chemin demandé (xlsx_abs_path) : {xlsx_abs_path or '—'}\n"
+                f"- Sélection (selected_xlsx)      : {selected_xlsx or '—'}\n"
+                f"- Fallback attendu               : {common_data_dir}/Mesures Completes*.xlsx"
+            )
+            return
+
+        workbook_path = mesures_path
+
+    # ✅ cache busting with force_key (kept)
+    mtime = float(workbook_path.stat().st_mtime) + float(force_key or 0)
 
     try:
-        dmin, dmax = _global_date_range(str(mesures_path), mtime)
+        dmin, dmax = _global_date_range(str(workbook_path), mtime)
     except Exception:
         dmin, dmax = None, None
 
     try:
-        points = _load_target_xy_medians(str(mesures_path), mtime)
+        points = _load_target_xy_medians(str(workbook_path), mtime)
     except Exception as e:
-        st.error("Impossible de lire Mesures Completes (médianes).")
+        st.error("Impossible de lire le classeur (médianes).")
         st.caption(str(e))
         return
 
@@ -1533,9 +1572,11 @@ def render_topo_projections(selected_xlsx: str, xlsx_abs_path: str, force_key: i
         components.html(_build_svg_targets(points, width=950, height=700), height=720, scrolling=False)
 
         with st.expander("Diagnostic", expanded=False):
-            st.write("Classeur :", str(mesures_path))
+            st.write("Classeur utilisé :", str(workbook_path))
+            st.write("selected_xlsx :", selected_xlsx or "—")
+            st.write("xlsx_abs_path :", xlsx_abs_path or "—")
             try:
-                st.write("Onglet (1er onglet lu) :", _detect_data_sheet(str(mesures_path)))
+                st.write("Onglet (1er onglet lu) :", _detect_data_sheet(str(workbook_path)))
             except Exception as e:
                 st.write("Onglet : (erreur)", str(e))
             st.write("Plage de dates globale :", _fmt_date(dmin), "→", _fmt_date(dmax))
@@ -1545,7 +1586,7 @@ def render_topo_projections(selected_xlsx: str, xlsx_abs_path: str, force_key: i
     with tab2:
         st.markdown(f"### Mouvements connus au {_fmt_date(dmax)} depuis le {_fmt_date(dmin)}")
         try:
-            deltas_all = _load_target_deltas_first_last(str(mesures_path), mtime)
+            deltas_all = _load_target_deltas_first_last(str(workbook_path), mtime)
         except Exception as e:
             st.error("Impossible de calculer le mouvement connu (first/last).")
             st.caption(str(e))
@@ -1556,7 +1597,7 @@ def render_topo_projections(selected_xlsx: str, xlsx_abs_path: str, force_key: i
         start_30, end_30 = _window_bounds_from_last(dmax, 30)
         st.markdown(f"### Mouvements connus au cours du mois passé (du {_fmt_date(start_30)} au {_fmt_date(end_30)})")
         try:
-            deltas_30 = _load_target_deltas_last_n_days(str(mesures_path), mtime, days=30)
+            deltas_30 = _load_target_deltas_last_n_days(str(workbook_path), mtime, days=30)
         except Exception as e:
             st.error("Impossible de calculer le mouvement sur les 30 derniers jours.")
             st.caption(str(e))
@@ -1567,7 +1608,7 @@ def render_topo_projections(selected_xlsx: str, xlsx_abs_path: str, force_key: i
         start_7, end_7 = _window_bounds_from_last(dmax, 7)
         st.markdown(f"### Mouvements connus au cours de la semaine passée (du {_fmt_date(start_7)} au {_fmt_date(end_7)})")
         try:
-            deltas_7 = _load_target_deltas_last_n_days(str(mesures_path), mtime, days=7)
+            deltas_7 = _load_target_deltas_last_n_days(str(workbook_path), mtime, days=7)
         except Exception as e:
             st.error("Impossible de calculer le mouvement sur les 7 derniers jours.")
             st.caption(str(e))
@@ -1577,7 +1618,7 @@ def render_topo_projections(selected_xlsx: str, xlsx_abs_path: str, force_key: i
     with tab5:
         st.markdown("### Mouvements sur une période personnalisée")
         try:
-            html = _build_svg_mouvement_custom_live(points, str(mesures_path), mtime, width=950, height=700)
+            html = _build_svg_mouvement_custom_live(points, str(workbook_path), mtime, width=950, height=700)
         except Exception as e:
             st.error("Impossible de préparer le mode live.")
             st.caption(str(e))

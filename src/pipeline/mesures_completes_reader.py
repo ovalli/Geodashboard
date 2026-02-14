@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Dict, Iterable, List, Optional, Tuple
+from pathlib import Path
+from typing import Dict, Iterable, List, Optional
 
 import pandas as pd
 
@@ -28,6 +29,17 @@ def _is_blank(v) -> bool:
     if isinstance(v, float) and pd.isna(v):
         return True
     return str(v).strip() == ""
+
+
+def _resolve_path(workbook_path: str) -> str:
+    return str(Path(workbook_path).expanduser().resolve())
+
+
+def _file_mtime(workbook_path_resolved: str) -> float:
+    try:
+        return Path(workbook_path_resolved).stat().st_mtime
+    except Exception:
+        return 0.0
 
 
 @dataclass(frozen=True)
@@ -74,35 +86,64 @@ def _infer_target_blocks(df: pd.DataFrame) -> List[TargetBlock]:
 
 
 @lru_cache(maxsize=32)
-def _read_workbook_sheet(workbook_path: str, sheet_name: Optional[str]) -> pd.DataFrame:
+def _read_workbook_sheet_cached(workbook_path_resolved: str, sheet_name: Optional[str], mtime: float) -> pd.DataFrame:
     """
     Lit la feuille (ou la 1ère feuille si sheet_name None).
     Important: header=None car structure custom.
+
+    ✅ mtime dans la signature => si le fichier change, le cache est invalidé.
     """
     if sheet_name:
-        return pd.read_excel(workbook_path, sheet_name=sheet_name, header=None, engine="openpyxl")
+        return pd.read_excel(workbook_path_resolved, sheet_name=sheet_name, header=None, engine="openpyxl")
+
     # 1ère feuille
-    xls = pd.ExcelFile(workbook_path, engine="openpyxl")
+    xls = pd.ExcelFile(workbook_path_resolved, engine="openpyxl")
     first = xls.sheet_names[0]
-    return pd.read_excel(workbook_path, sheet_name=first, header=None, engine="openpyxl")
+    return pd.read_excel(workbook_path_resolved, sheet_name=first, header=None, engine="openpyxl")
+
+
+def _read_workbook_sheet(
+    workbook_path: str,
+    sheet_name: Optional[str],
+    mtime: Optional[float],
+) -> pd.DataFrame:
+    wp = _resolve_path(workbook_path)
+    mt = float(_file_mtime(wp) if mtime is None else mtime)
+    return _read_workbook_sheet_cached(wp, sheet_name, mt)
 
 
 @lru_cache(maxsize=32)
-def list_targets_in_mesures(workbook_path: str, sheet_name: Optional[str] = None) -> List[str]:
-    df = _read_workbook_sheet(workbook_path, sheet_name)
+def _list_targets_cached(workbook_path_resolved: str, sheet_name: Optional[str], mtime: float) -> List[str]:
+    df = _read_workbook_sheet_cached(workbook_path_resolved, sheet_name, mtime)
     blocks = _infer_target_blocks(df)
     return [b.name for b in blocks]
+
+
+def list_targets_in_mesures(
+    workbook_path: str,
+    sheet_name: Optional[str] = None,
+    mtime: Optional[float] = None,
+) -> List[str]:
+    """
+    ✅ mtime optionnel : si fourni, il sert de clé de cache.
+    """
+    wp = _resolve_path(workbook_path)
+    mt = float(_file_mtime(wp) if mtime is None else mtime)
+    return _list_targets_cached(wp, sheet_name, mt)
 
 
 def read_targets_timeseries(
     workbook_path: str,
     targets: Iterable[str],
     sheet_name: Optional[str] = None,
+    mtime: Optional[float] = None,
 ) -> Dict[str, pd.DataFrame]:
     """
     Retourne {target_name: df} avec colonnes: date, x, y, z (valeurs brutes).
+
+    ✅ mtime optionnel : force l’invalidation du cache de lecture du classeur.
     """
-    df = _read_workbook_sheet(workbook_path, sheet_name)
+    df = _read_workbook_sheet(workbook_path, sheet_name, mtime)
     blocks = _infer_target_blocks(df)
     if not blocks:
         return {}
