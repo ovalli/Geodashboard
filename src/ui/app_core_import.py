@@ -13,7 +13,6 @@ from src.io.import_utils import (
     replace_file_bytes,
 )
 
-
 # ======================================================
 # Formatting helpers
 # ======================================================
@@ -62,7 +61,79 @@ def _try_get_last_modified(uploaded) -> datetime | None:
 
 
 def _content_signature(content: bytes) -> str:
+    # sha1 suffit ici (signature courte). Si tu préfères, passe en sha256.
     return hashlib.sha1(content).hexdigest()
+
+
+# ======================================================
+# Cache keys (ciblées par "dataset")
+# Objectif: invalider UNIQUEMENT ce qui dépend du fichier importé,
+# sans toucher aux caches des autres datasets.
+#
+# 👉 Principe:
+# - on stocke une signature "content hash" par kind (topo / inclino / ...)
+# - tout loader @st.cache_data doit prendre ce hash en param
+#   (ex: load_topo_df(path, content_hash=st.session_state["data_hash"]["topo"])
+#  => quand on importe un nouveau fichier, content_hash change => cache saute, ciblé.
+# ======================================================
+def _ensure_cache_state() -> None:
+    if "data_hash" not in st.session_state or not isinstance(st.session_state.get("data_hash"), dict):
+        st.session_state["data_hash"] = {}
+    if "data_rev" not in st.session_state or not isinstance(st.session_state.get("data_rev"), dict):
+        st.session_state["data_rev"] = {}
+
+
+def set_dataset_signature(kind: str, sig: str) -> None:
+    """
+    Stocke la signature du contenu pour invalider le cache de CE dataset uniquement.
+
+    NOTE: Il faut que les fonctions @st.cache_data utilisent ce param:
+      load_xxx(..., content_hash=st.session_state["data_hash"].get(kind,""))
+    """
+    _ensure_cache_state()
+    st.session_state["data_hash"][kind] = sig
+    st.session_state["data_rev"][kind] = int(st.session_state["data_rev"].get(kind, 0)) + 1
+
+
+def get_dataset_signature(kind: str) -> str:
+    _ensure_cache_state()
+    return str(st.session_state["data_hash"].get(kind, ""))
+
+
+def _targeted_python_cache_clear(kind: str) -> None:
+    """
+    IMPORTANT:
+    - Streamlit ne permet pas de "clear" une entrée précise de st.cache_data.
+      Donc on NE fait PAS st.cache_data.clear() ici (trop global).
+    - Par contre, si certains modules utilisent functools.lru_cache côté Python,
+      on peut (optionnellement) les purger ciblé / ou au moins réduire les effets.
+    Ici on tente juste quelques clear "safe" sans casser si absent.
+    """
+    # Exemple : si tu as des readers avec lru_cache par dataset.
+    # On garde en try/except : s'il n'existe pas, on ne fait rien.
+    try:
+        if kind == "topo":
+            # from src.pipeline.topo_reader import _read_cached  # si tu as un module dédié
+            # _read_cached.cache_clear()
+            pass
+    except Exception:
+        pass
+
+    try:
+        if kind == "inclino":
+            # from src.pipeline.inclino_reader import _read_cached
+            # _read_cached.cache_clear()
+            pass
+    except Exception:
+        pass
+
+    # Si tu utilises mesures_completes_reader et que tu importes ce fichier ici un jour :
+    # try:
+    #     from src.pipeline import mesures_completes_reader as mcr
+    #     mcr._read_workbook_sheet_cached.cache_clear()
+    #     mcr._list_targets_cached.cache_clear()
+    # except Exception:
+    #     pass
 
 
 # ======================================================
@@ -187,8 +258,6 @@ def _validate_uploaded_xlsx_strict(content: bytes) -> tuple[bool, str]:
         )
 
     # 4) Vérifier qu’on trouve AU MOINS un triplet XYZ numérique
-    # -> dans certains fichiers, les premières lignes peuvent être vides,
-    #    donc on scanne plus loin (stop dès qu'on trouve).
     MAX_SCAN_ROWS = 800
     found_triplet = False
     scanned = 0
@@ -201,14 +270,11 @@ def _validate_uploaded_xlsx_strict(content: bytes) -> tuple[bool, str]:
         if not row:
             continue
 
-        # Ne tester que si col1 est une date valide (évite faux positifs)
         d0 = row[0] if len(row) >= 1 else None
         if not _is_date_cell(d0):
             continue
 
-        # Cherche un triplet complet (X,Y,Z numériques)
         for c in target_cols[: min(len(target_cols), 24)]:  # limiter pour perf
-            # c est 1-based, row est 0-based
             x = row[c - 1] if (c - 1) < len(row) else None
             y = row[c] if c < len(row) else None
             z = row[c + 1] if (c + 1) < len(row) else None
@@ -226,7 +292,7 @@ def _validate_uploaded_xlsx_strict(content: bytes) -> tuple[bool, str]:
 
 
 # ======================================================
-# Import (auto replace)
+# Import (auto replace) + invalidation ciblée (par kind)
 # ======================================================
 def _auto_replace_on_upload(kind: str, dest_path: Path, uploaded) -> None:
     if uploaded is None:
@@ -274,20 +340,26 @@ def _auto_replace_on_upload(kind: str, dest_path: Path, uploaded) -> None:
             backup_dir=dest_path.parent / "_import_backups",
         )
 
+        # ✅ mémorise "dernier upload" (UI)
         st.session_state[sig_key] = sig
         st.session_state[up_key] = now
 
-        st.markdown(f"- **Date d’upload :** {_fmt_dt(now)}")
-        st.success("✅ Import terminé.")
+        # ✅ INVALIDATION CIBLÉE (sans toucher aux autres)
+        # -> les loaders doivent utiliser st.session_state["data_hash"][kind]
+        set_dataset_signature(kind, sig)
 
-        try:
-            st.cache_data.clear()
-        except Exception:
-            pass
-        try:
-            st.cache_resource.clear()
-        except Exception:
-            pass
+        # ✅ optionnel : purge ciblée des caches Python lru_cache si besoin
+        _targeted_python_cache_clear(kind)
+
+        st.markdown(f"- **Date d’upload :** {_fmt_dt(now)}")
+        st.success("✅ Import terminé. (Cache invalidé uniquement pour ce dataset)")
+
+        # ✅ IMPORTANT :
+        # On NE fait PAS st.cache_data.clear() / st.cache_resource.clear()
+        # car ça viderait le cache de TOUS les autres fichiers/datasets.
+
+        # rerun pour que les pages qui utilisent le nouveau hash se recalculent
+        st.rerun()
 
     except PermissionError as e:
         st.error(
