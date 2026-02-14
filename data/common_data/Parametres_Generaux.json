@@ -1,0 +1,355 @@
+{
+  "meta": {
+    "schema": "geodashboard.parametres_generaux.v2",
+    "created_at": "2026-02-10T23:24:53Z",
+    "source_file": "Paramètres Généraux.json",
+    "description": "Conversion depuis JSON table (style Excel) vers structure métier par coupe",
+    "updated_at": "2026-02-12T05:57:20Z"
+  },
+  "parametres": {
+    "angle_oriente_x_n_trigo": {
+      "label": "Angle orienté (X n), trigo",
+      "unit": "deg",
+      "editable": true
+    },
+    "inclinometre": {
+      "label": "Inclinomètre",
+      "unit": null,
+      "editable": true
+    },
+    "xref": {
+      "label": "Xréf",
+      "unit": null,
+      "editable": true
+    },
+    "yref": {
+      "label": "Yréf",
+      "unit": null,
+      "editable": true
+    },
+    "echelle_horizontale_m": {
+      "label": "Echelle horizontale (m)",
+      "unit": null,
+      "editable": true
+    },
+    "echelle_horizontale_mm": {
+      "label": "Echelle horizontale (mm)",
+      "unit": null,
+      "editable": true
+    },
+    "echelle_verticale_m": {
+      "label": "Echelle verticale (m)",
+      "unit": null,
+      "editable": true
+    },
+    "echelle_verticale_mm": {
+      "label": "Echelle verticale (mm)",
+      "unit": null,
+      "editable": true
+    },
+    "inclinometre_amont": {
+      "label": "Inclinomètre amont",
+      "unit": null,
+      "editable": true
+    },
+    "recul_des_inclino_amont_2": {
+      "label": "Recul des inclino. Amont",
+      "unit": null,
+      "editable": true
+    },
+    "alt_par_rapport_a_la_paroi_2": {
+      "label": "Alt. Par rapport à la Paroi",
+      "unit": null,
+      "editable": true
+    },
+    "diametre_micro_pieux_ep_paroi_sans_unite": {
+      "label": "Diamètre Micro pieux/ep. paroi (sans unité)",
+      "unit": null,
+      "editable": true
+    },
+    "piezometre": {
+      "label": "Piezometre",
+      "unit": null,
+      "editable": true
+    },
+    "extensometre": {
+      "label": "Extensometre",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_alerte_topo_avoisinant": {
+      "label": "Seuil alerte topo avoisinant",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_intrevention_topo_avoisinant": {
+      "label": "Seuil intrevention topo avoisinant",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_alerte_topo_paroi": {
+      "label": "Seuil alerte topo paroi",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_intervention_topo_paroi": {
+      "label": "Seuil intervention topo paroi",
+      "unit": null,
+      "editable": true
+    },
+    "xmin_topo": {
+      "label": "Xmin Topo",
+      "unit": null,
+      "editable": true
+    },
+    "xmax_topo": {
+      "label": "Xmax Topo",
+      "unit": null,
+      "editable": true
+    },
+    "ymin_topo": {
+      "label": "Ymin Topo",
+      "unit": null,
+      "editable": true
+    },
+    "ymax_topo": {
+      "label": "Ymax Topo",
+      "unit": null,
+      "editable": true
+    },
+    "mesures_topo_aut_man": {
+      "label": "Mesures Topo Aut./Man.",
+      "unit": null,
+      "editable": true
+    },
+    "inclinometre_amont_n_2": {
+      "label": "Inclinomètre amont n°2",
+      "unit": "deg",
+      "editable": true
+    },
+    "largeur_approx_du_troncon_m": {
+      "label": "Largeur approx. du tronçon (m)",
+      "unit": null,
+      "editable": true
+    },
+    "si_nec_etendue_zone": {
+      "label": "Si néc, étendue zone",
+      "unit": null,
+      "editable": true
+    },
+    "borne_sup_graphs_deplacements": {
+      "label": "Borne sup graphs déplacements",
+      "unit": null,
+      "editable": true
+    },
+    "borne_inf_graphs_deplacements": {
+      "label": "Borne inf graphs déplacements",
+      "unit": null,
+      "editable": true
+    },
+    "unite_altimetrique_ngm_ngf": {
+      "label": "Unité altimétrique (NGM/NGF)",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_d_alerte_tirants": {
+      "label": "Seuil d'alerte tirants (+/- %)",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_d_intervention_tirants": {
+      "label": "Seuil d'intervention tirants (+/- %)",
+      "unit": null,
+      "editable": true
+    },
+    "distance_limite_de_plaquage_des_cibles_contre_la_paroi_ng": {
+      "label": "Distance limite de plaquage des cibles contre la paroi (NG)",
+      "unit": null,
+      "editable": true
+    },
+    "traiter_la_coupe_en_logobs_excel": {
+      "label": "Traiter la coupe en logobs Excel",
+      "unit": null,
+      "editable": true
+    },
+    "date_de_debut_des_graphs": {
+      "label": "Date de début des graphs",
+      "unit": null,
+      "editable": true
+    },
+    "nbr_pz_prevus": {
+      "label": "Nbr Pz prévus",
+      "unit": null,
+      "editable": true
+    },
+    "nbr_incl_prevus": {
+      "label": "Nbr Incl. prévus",
+      "unit": null,
+      "editable": true
+    },
+    "nbr_cell_prevues": {
+      "label": "Nbr Cell prévues",
+      "unit": null,
+      "editable": true
+    },
+    "nbr_cibles_prevues": {
+      "label": "Nbr Cibles prévues",
+      "unit": null,
+      "editable": true
+    },
+    "nbr_ext_prevues": {
+      "label": "Nbr Ext prévues",
+      "unit": null,
+      "editable": true
+    },
+    "nom_de_la_def_th_n_01": {
+      "label": "Nom de la def th n°01",
+      "unit": "deg",
+      "editable": true
+    },
+    "nom_de_la_def_th_n_02_non_fonctionnel": {
+      "label": "Nom de la def th n°02 (non fonctionnel)",
+      "unit": "deg",
+      "editable": true
+    },
+    "nom_pour_rech_tirants": {
+      "label": "Nom pour rech. tirants",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_alerte_ventre": {
+      "label": "Seuil Alerte Ventre",
+      "unit": null,
+      "editable": true
+    },
+    "seuil_intervention_ventre": {
+      "label": "Seuil Intervention Ventre",
+      "unit": null,
+      "editable": true
+    },
+    "attention_les_modifications_de_cet_onglet_doivent_etre_enregistres_dans_le_programme_afin_de_garder_les_differents_chantiers_uniformes": {
+      "label": "Attention les modifications de cet onglet doivent être enregistrés dans le programme afin de garder les différents chantiers uniformes",
+      "unit": null,
+      "editable": true
+    }
+  },
+  "coupes": [
+    {
+      "name": "Salut",
+      "angle_deg": 69.42184844349958,
+      "targets": [
+        "Auto-AC11a",
+        "Auto-AC7Ba",
+        "Auto-AC9a",
+        "Auto-GR3b",
+        "Auto-GR4b",
+        "Auto-PC106a",
+        "Auto-PC107a",
+        "Auto-PC108a",
+        "Auto-PC10a",
+        "Auto-PC111a",
+        "Auto-PC11a",
+        "Auto-PC12a",
+        "Auto-PC13a",
+        "Auto-PC1A",
+        "Auto-PC2.1a",
+        "Auto-PC206a",
+        "Auto-PC207a",
+        "Auto-PC208a",
+        "Auto-PC21a",
+        "Auto-PC22a",
+        "Auto-PC23a",
+        "Auto-PC23Ba",
+        "Auto-PC3.1a",
+        "Auto-PC307a",
+        "Auto-PC308a",
+        "Auto-PC5a",
+        "Auto-PC7.1a",
+        "Auto-PD1a",
+        "Auto-TREM18.2b",
+        "Auto-TREM2.1a",
+        "Auto-TREM2.2a",
+        "Auto-TREM2.3a",
+        "Auto-VJ1a",
+        "Auto-VJ2a",
+        "Auto-VJ3a",
+        "Manu-AC10",
+        "Manu-AC11",
+        "Manu-AC12",
+        "Manu-AC7",
+        "Manu-AC7B",
+        "Manu-AC8",
+        "Manu-AC9",
+        "Manu-PC1",
+        "Manu-PC10",
+        "Manu-PC106",
+        "Manu-PC107",
+        "Manu-PC108",
+        "Manu-PC11",
+        "Manu-PC111",
+        "Manu-PC12",
+        "Manu-PC13",
+        "Manu-PC2.1",
+        "Manu-PC206",
+        "Manu-PC207",
+        "Manu-PC208",
+        "Manu-PC21",
+        "Manu-PC22",
+        "Manu-PC23",
+        "Manu-PC23B",
+        "Manu-PC3.1",
+        "Manu-PC307",
+        "Manu-PC308",
+        "Manu-PC5",
+        "Manu-PC7.1",
+        "Manu-VJ1",
+        "Manu-VJ2",
+        "Manu-VJ3",
+        "Sd-BARET11.1",
+        "Sd-BARET11.2",
+        "Sd-BARET11.3",
+        "Sd-BARET2.1",
+        "Sd-BARET2.2",
+        "Sd-BARET3.1",
+        "Sd-BARET3.2",
+        "Sd-BARET3.3",
+        "Sd-BARET4.1",
+        "Sd-BARET4.2",
+        "Sd-BARET4.3",
+        "Sd-BARET5.1",
+        "Sd-BARET5.3",
+        "Sd-BARET6.1",
+        "Sd-BARET6.2",
+        "Sd-BARET6.3",
+        "Sd-P3.1",
+        "Sd-P3.3",
+        "Sd-P3.4",
+        "Sd-P3.5",
+        "Sd-P4.5",
+        "Sd-P5.1",
+        "Sd-P5.3",
+        "Sd-P5.4",
+        "Sd-P5.5",
+        "Sd-P50.2",
+        "Sd-P50.3",
+        "Sd-P50.5",
+        "Sd-P6.1",
+        "Sd-P7.1",
+        "Sd-P7.3",
+        "Sd-P7.5",
+        "Sd-P8.1",
+        "Sd-P8.2",
+        "Sd-P8.3",
+        "Sd-PIL10.1",
+        "Sd-PIL4A.1",
+        "Sd-PIL5C.1",
+        "Sd-PIL8.1",
+        "Sd-PSDALLE.1",
+        "Sd-PSDALLE.2",
+        "Sd-PSDALLE.7"
+      ],
+      "ui_idx": 1,
+      "color": "#22C55E"
+    }
+  ]
+}

@@ -1,0 +1,873 @@
+{
+  "version": 1,
+  "coupes": {
+    "Coupe2": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "+136.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "+132.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "+128.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "+122.10",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "+119.20",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "+116.40",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "+113.40",
+          "l_libre_m": "15.00",
+          "l_ancree_m": "18.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "+110.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "+107.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "+104.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "+101.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "+98.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "+95.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "+92.40",
+          "l_libre_m": "10.00",
+          "l_ancree_m": "10.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "+89.40",
+          "l_libre_m": "10.00",
+          "l_ancree_m": "10.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        }
+      ]
+    },
+    "Coupe 3": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "+136.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "+132.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "+128.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "+122.10",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "+119.20",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "+116.40",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "+113.40",
+          "l_libre_m": "15.00",
+          "l_ancree_m": "18.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "+110.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "+107.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "+104.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "+101.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "+98.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "+95.40",
+          "l_libre_m": "15.00",
+          "l_ancree_m": "18.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "+92.40",
+          "l_libre_m": "10.00",
+          "l_ancree_m": "10.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "+89.40",
+          "l_libre_m": "10.00",
+          "l_ancree_m": "10.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        }
+      ]
+    },
+    "eee": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        }
+      ]
+    },
+    "bonjour": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        }
+      ]
+    },
+    "salut": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        }
+      ]
+    },
+    "Coupe 32": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "+136.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "+132.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "+128.50",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "+122.10",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "+119.20",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "+116.40",
+          "l_libre_m": "18.00",
+          "l_ancree_m": "15.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "+113.40",
+          "l_libre_m": "15.00",
+          "l_ancree_m": "18.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "+110.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "+107.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "+104.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "+101.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "+98.40",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "+95.40",
+          "l_libre_m": "15.00",
+          "l_ancree_m": "18.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "+92.40",
+          "l_libre_m": "10.00",
+          "l_ancree_m": "10.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "+89.40",
+          "l_libre_m": "10.00",
+          "l_ancree_m": "10.00",
+          "inclinaison_deg": "10",
+          "azimut_deg": ""
+        }
+      ]
+    },
+    "huhuhuhu": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "",
+          "l_libre_m": "",
+          "l_ancree_m": "",
+          "inclinaison_deg": "",
+          "azimut_deg": ""
+        }
+      ]
+    }
+  }
+}

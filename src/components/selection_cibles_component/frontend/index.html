@@ -1,0 +1,74 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    html,body{margin:0;padding:0;height:100%;overflow:hidden;font-family:system-ui}
+    #inner{width:100%;height:100%;border:0;display:block}
+  </style>
+</head>
+<body>
+  <iframe id="inner" sandbox="allow-scripts allow-same-origin"></iframe>
+
+  <script>
+    // ---------- Streamlit component protocol ----------
+    function postToStreamlit(payload) {
+      window.parent.postMessage(payload, "*");
+    }
+
+    function componentReady() {
+      postToStreamlit({
+        isStreamlitMessage: true,
+        type: "streamlit:componentReady",
+        apiVersion: 1
+      });
+    }
+
+    function setFrameHeight(h) {
+      postToStreamlit({
+        isStreamlitMessage: true,
+        type: "streamlit:setFrameHeight",
+        height: h
+      });
+    }
+
+    function setComponentValue(value) {
+      postToStreamlit({
+        isStreamlitMessage: true,
+        type: "streamlit:setComponentValue",
+        value: value
+      });
+    }
+
+    const inner = document.getElementById("inner");
+
+    // IMPORTANT: signal ready ASAP
+    componentReady();
+    setFrameHeight(720);
+
+    // Receive render args from Streamlit
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (!msg || msg.type !== "streamlit:render") return;
+
+      const args = msg.args || {};
+      const srcdoc = args.srcdoc || "";
+      const height = args.height || 720;
+
+      setFrameHeight(height);
+      inner.srcdoc = srcdoc;
+    });
+
+    // Forward messages from inner iframe to Streamlit as component values
+    window.addEventListener("message", (event) => {
+      const msg = event.data;
+      if (event.source !== inner.contentWindow) return;
+      if (!msg || typeof msg !== "object") return;
+
+      if (msg.type === "commit_angle") {
+        setComponentValue(msg);
+      }
+    });
+  </script>
+</body>
+</html>

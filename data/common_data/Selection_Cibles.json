@@ -1,0 +1,24 @@
+{
+  "version": 1,
+  "updated_at": "2026-02-12T06:13:14Z",
+  "coupes": [
+    {
+      "name": "updated_at",
+      "angle_deg": 0.0,
+      "targets": [],
+      "ui_idx": 1
+    },
+    {
+      "name": "version",
+      "angle_deg": 0.0,
+      "targets": [],
+      "ui_idx": 0
+    },
+    {
+      "name": "zones",
+      "angle_deg": 0.0,
+      "targets": [],
+      "ui_idx": 2
+    }
+  ]
+}

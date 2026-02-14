@@ -1,0 +1,699 @@
+{
+  "version": 1,
+  "coupes": {
+    "Coupe2": {
+      "layers": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ],
+      "rows": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ]
+    },
+    "Coupe 3": {
+      "layers": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ],
+      "rows": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ]
+    },
+    "eee": {
+      "layers": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ],
+      "rows": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ]
+    },
+    "bonjour": {
+      "layers": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ],
+      "rows": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ]
+    },
+    "salut": {
+      "layers": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ],
+      "rows": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ]
+    },
+    "Salut": {
+      "rows": [
+        {
+          "sol": "SOL 1",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 2",
+          "arase_sup": "22",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 3",
+          "arase_sup": "22",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 4",
+          "arase_sup": "22",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 5",
+          "arase_sup": "22",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 6",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 7",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 8",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 9",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        },
+        {
+          "sol": "SOL 10",
+          "arase_sup": "",
+          "arase_inf": "",
+          "pendage_sup": ""
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "version": 1,
+  "updated_at": "2026-02-12T06:14:24Z",
+  "coupes": [
+    {
+      "name": "shapes",
+      "angle_deg": 0.0,
+      "targets": [],
+      "ui_idx": 2
+    },
+    {
+      "name": "updated_at",
+      "angle_deg": 0.0,
+      "targets": [],
+      "ui_idx": 1
+    },
+    {
+      "name": "version",
+      "angle_deg": 0.0,
+      "targets": [],
+      "ui_idx": 0
+    }
+  ],
+  "shapes": {
+    "selection_cibles": {
+      "quad|updated_at|GLOBAL": {
+        "type": "quadrilateral",
+        "points": [
+          {
+            "x": 191.03186225891113,
+            "y": 253.88458251953125
+          },
+          {
+            "x": 383.920166015625,
+            "y": 180.74566650390625
+          },
+          {
+            "x": 696.0,
+            "y": 374.00000000000006
+          },
+          {
+            "x": 228.73143005371094,
+            "y": 395.89727783203125
+          }
+        ]
+      },
+      "alpha|updated_at|GLOBAL": {
+        "type": "scalar",
+        "value": -86.06809838254662
+      },
+      "quad|shapes|GLOBAL": {
+        "type": "quadrilateral",
+        "points": [
+          {
+            "x": 518.3771667480469,
+            "y": 147.7475128173828
+          },
+          {
+            "x": 604.214111328125,
+            "y": 170.06651306152344
+          },
+          {
+            "x": 696.0,
+            "y": 374.00000000000006
+          },
+          {
+            "x": 545.3233337402344,
+            "y": 346.24224853515625
+          }
+        ]
+      },
+      "alpha|shapes|GLOBAL": {
+        "type": "scalar",
+        "value": 81.85035713831849
+      }
+    }
+  }
+}

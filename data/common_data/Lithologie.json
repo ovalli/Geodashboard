@@ -1,0 +1,77 @@
+{
+  "version": 4,
+  "palette": [
+    "#146EFF",
+    "#1D4ED8",
+    "#06B6D4",
+    "#0891B2",
+    "#22C55E",
+    "#16A34A",
+    "#84CC16",
+    "#EAB308",
+    "#F97316",
+    "#EA580C",
+    "#EF4444",
+    "#DC2626",
+    "#EC4899",
+    "#DB2777",
+    "#A855F7",
+    "#7C3AED",
+    "#64748B",
+    "#334155",
+    "#8B5E34",
+    "#111827"
+  ],
+  "rows": [
+    {
+      "sol": "SOL 1",
+      "nom": "Remblai Couvertures",
+      "couleur": "#0891B2"
+    },
+    {
+      "sol": "SOL 2",
+      "nom": "Argiles et Marbnres Altérées",
+      "couleur": "#22C55E"
+    },
+    {
+      "sol": "SOL 3",
+      "nom": "Marno-Calcaire Fracturé",
+      "couleur": "#F97316"
+    },
+    {
+      "sol": "SOL 4",
+      "nom": "Marnes et Calcaires",
+      "couleur": "#A855F7"
+    },
+    {
+      "sol": "SOL 5",
+      "nom": "Calcaire Broyé",
+      "couleur": "#EF4444"
+    },
+    {
+      "sol": "SOL 6",
+      "nom": "Calcaire",
+      "couleur": "#06B6D4"
+    },
+    {
+      "sol": "SOL 7",
+      "nom": "Marne",
+      "couleur": "#EAB308"
+    },
+    {
+      "sol": "SOL 8",
+      "nom": "",
+      "couleur": "#EC4899"
+    },
+    {
+      "sol": "SOL 9",
+      "nom": "",
+      "couleur": "#64748B"
+    },
+    {
+      "sol": "SOL 10",
+      "nom": "",
+      "couleur": "#334155"
+    }
+  ]
+}
