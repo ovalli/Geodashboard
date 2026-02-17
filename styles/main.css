@@ -1,28 +1,184 @@
-html, body { margin: 0; padding: 0; }
-svg { display: block; background: white; }
-
 /* =========================================================
-   DESSIN (SVG) : hover & classes
+   GeoDashboard – main.css (COMPLET) – Thème Pro Blanc
+   ✅ Fond blanc global
+   ✅ Palette pro (B2B / ingénierie)
+   ✅ NE CASSE PAS les courbes/3D Plotly/Vega
+   ✅ Styles SVG custom uniquement sur tes éléments .gd-*
+   ✅ Freeze 1ère colonne uniquement si wrapper .gd-excel-freeze
    ========================================================= */
 
-/* ===========================
-   BASE SHAPES
-   =========================== */
+/* ---------------------------------------------------------
+   1) TOKENS (palette)
+   --------------------------------------------------------- */
+:root{
+  /* Fond & surfaces */
+  --gd-bg:        #FFFFFF;
+  --gd-surface:   #F4F6F8;
+  --gd-surface-2: #EEF2F6;
+
+  /* Texte */
+  --gd-text:      #0F172A;  /* bleu nuit */
+  --gd-muted:     #475569;  /* slate */
+  --gd-faint:     #64748B;  /* slate clair */
+
+  /* Primaire / accent */
+  --gd-primary:       #2563EB; /* bleu pro */
+  --gd-primary-hover: #1E40AF;
+  --gd-accent:        #16A34A; /* vert technique */
+
+  /* Lignes / ombres */
+  --gd-border:   #E2E8F0;
+  --gd-shadow:   rgba(2, 6, 23, 0.08);
+  --gd-shadow-2: rgba(2, 6, 23, 0.12);
+
+  /* Radius */
+  --gd-r-sm: 8px;
+  --gd-r-md: 12px;
+}
+
+/* ---------------------------------------------------------
+   2) BASE APP (ne pas surcharger Streamlit)
+   --------------------------------------------------------- */
+html, body { margin: 0; padding: 0; }
+
+.stApp{
+  background: var(--gd-bg) !important;
+  color: var(--gd-text);
+}
+
+/* Sidebar: surface légère + bordure */
+[data-testid="stSidebar"]{
+  background: var(--gd-surface) !important;
+  border-right: 1px solid var(--gd-border);
+}
+
+/* Titres : sobres */
+h1, h2, h3, h4, h5, h6{
+  color: var(--gd-text);
+  letter-spacing: -0.01em;
+}
+
+/* Surtout PAS de règle globale type:
+   p, span, div, label { color: ... }
+   -> ça casse les composants Streamlit/Plotly
+*/
+
+/* ---------------------------------------------------------
+   3) CARTES / BLOCS Streamlit (border wrapper)
+   --------------------------------------------------------- */
+div[data-testid="stVerticalBlockBorderWrapper"]{
+  border: 1px solid var(--gd-border) !important;
+  border-radius: var(--gd-r-md) !important;
+  box-shadow: 0 6px 18px var(--gd-shadow);
+}
+
+/* ---------------------------------------------------------
+   4) INPUTS
+   --------------------------------------------------------- */
+.stTextInput input,
+.stNumberInput input,
+.stTextArea textarea,
+.stSelectbox [data-baseweb="select"] > div{
+  border: 1px solid var(--gd-border) !important;
+  border-radius: var(--gd-r-sm) !important;
+}
+
+/* Focus discret */
+.stTextInput input:focus,
+.stNumberInput input:focus,
+.stTextArea textarea:focus{
+  outline: none !important;
+  border-color: rgba(37, 99, 235, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12) !important;
+}
+
+/* ---------------------------------------------------------
+   5) BOUTONS
+   --------------------------------------------------------- */
+
+/* Boutons standard */
+.stButton > button{
+  border-radius: var(--gd-r-sm) !important;
+  font-weight: 600;
+  border: 1px solid var(--gd-border) !important;
+}
+
+/* Bouton "primary" (Streamlit kind="primary") */
+div[data-testid="stButton"] button[kind="primary"]{
+  background: var(--gd-primary) !important;
+  border-color: var(--gd-primary) !important;
+  color: #fff !important;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover{
+  background: var(--gd-primary-hover) !important;
+  border-color: var(--gd-primary-hover) !important;
+  filter: none !important;
+}
+
+/* Boutons secondaires (si Streamlit les rend différemment, ça reste discret) */
+div[data-testid="stButton"] button[kind="secondary"]{
+  background: #FFFFFF !important;
+  border-color: var(--gd-border) !important;
+  color: var(--gd-text) !important;
+}
+div[data-testid="stButton"] button[kind="secondary"]:hover{
+  background: var(--gd-surface-2) !important;
+}
+
+/* ---------------------------------------------------------
+   6) DATAFRAME / DATAEDITOR
+   --------------------------------------------------------- */
+[data-testid="stDataFrame"]{
+  border: 1px solid var(--gd-border) !important;
+  border-radius: var(--gd-r-md) !important;
+  overflow: hidden;
+  box-shadow: 0 6px 18px var(--gd-shadow);
+}
+
+/* ---------------------------------------------------------
+   7) HEADER MENU (tes classes)
+   --------------------------------------------------------- */
+.gd-menu-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 10px;
+  border-radius: 10px;
+  font-size: 0.92rem;
+  line-height: 1.2rem;
+  user-select:none;
+}
+.gd-menu-header:hover{
+  background: rgba(2,6,23,0.06);
+}
+.gd-menu-dot{
+  width:0.65rem;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0.7;
+}
+
+/* ---------------------------------------------------------
+   8) SVG CUSTOM (IMPORTANT: SCOPÉ AUX CLASSES .gd-*)
+   -> On NE touche PAS "svg{}" globalement (sinon Plotly/Altair cassent)
+   --------------------------------------------------------- */
+
+/* Tout ce qui est "gd" = ton SVG à toi */
 .gd-shape{
   pointer-events: all;
   transition: filter 140ms ease, transform 140ms ease, stroke-width 140ms ease, opacity 140ms ease;
   transform-box: fill-box;
   transform-origin: center;
 }
+
+/* Texte/labels custom */
 .gd-text{ pointer-events: none; }
 
-/* ===========================
-   CIBLES – LABEL
-   =========================== */
 .gd-cible-label{
   font-family: Arial, sans-serif;
   font-size: 12px;
-  fill: rgba(0,0,0,0.85);
+  fill: var(--gd-muted);
   opacity: 0.22;
   transition: opacity 140ms ease;
   pointer-events: all;
@@ -32,129 +188,119 @@ svg { display: block; background: white; }
 .gd-cible:hover .gd-cible-label{ opacity: 1.0; }
 .gd-cible.gd-hover .gd-cible-label{ opacity: 1.0; }
 
-/* ===========================
-   HOVER ACTIF (objets)
-   =========================== */
+/* Hover objets (SAUF sols) */
 .gd-shape:not(.gd-soil):hover{
-  filter: brightness(0.55) drop-shadow(0px 4px 10px rgba(0,0,0,0.35));
-  transform: scale(1.015);
-  stroke-width: calc(var(--sw) * 2.0);
+  filter: brightness(0.88) drop-shadow(0px 4px 10px rgba(0,0,0,0.22));
+  transform: scale(1.012);
+  stroke-width: calc(var(--sw) * 1.6);
 }
 .gd-shape.gd-hover:not(.gd-soil){
-  filter: brightness(0.55) drop-shadow(0px 4px 10px rgba(0,0,0,0.35));
-  transform: scale(1.015);
-  stroke-width: calc(var(--sw) * 2.0);
+  filter: brightness(0.88) drop-shadow(0px 4px 10px rgba(0,0,0,0.22));
+  transform: scale(1.012);
+  stroke-width: calc(var(--sw) * 1.6);
 }
 
-/* ===========================
-   SOLS (couches Geol)
-   - PAS d'ombre
-   - PAS de scale
-   - OUI fonçage (très visible)
-   =========================== */
+/* Sols (couches) : pas d’ombre, pas de scale */
 .gd-soil{
   pointer-events: all;
   filter: none;
   transform: none;
   box-shadow: none;
 }
-
-/* hover direct sur sol => fonçage net (pas d’ombre) */
 .gd-soil:hover{
-  filter: brightness(0.55) saturate(1.25) !important;
+  filter: brightness(0.82) saturate(1.1) !important;
   transform: none !important;
-  box-shadow: none !important;
   stroke-width: var(--sw) !important;
 }
-
-/* si un sol reçoit gd-hover (normalement non via JS), on neutralise */
 .gd-soil.gd-hover{
   filter: none !important;
   transform: none !important;
-  box-shadow: none !important;
   stroke-width: var(--sw) !important;
 }
 
-
-/* =========================================================
-   SIDEBAR : header "Coupes depuis Excels"
-   (si tu veux le style dans le CSS plutôt que dans app.py)
-   ========================================================= */
-.gd-menu-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:6px 10px;
-  border-radius:0.5rem;
-  font-size:0.92rem;
-  line-height:1.2rem;
-  user-select:none;
-}
-.gd-menu-header:hover{ background: rgba(0,0,0,0.06); }
-.gd-menu-dot{
-  width:0.65rem;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  opacity:0.7;
-}
-
-/* =========================================================
-   EXCEL EDITOR : Freeze première colonne (SCOPÉ)
-   IMPORTANT: ne s'applique QUE si excel_editor.py entoure
-   le widget dans <div class="gd-excel-freeze">...</div>
-   ========================================================= */
-
+/* ---------------------------------------------------------
+   9) FREEZE 1ère colonne Excel (SCOPÉ)
+   Utilisation: entourer ton dataframe/editor dans un conteneur:
+     <div class="gd-excel-freeze"> ... </div>
+   --------------------------------------------------------- */
 .gd-excel-freeze [data-testid="stDataFrame"]{
   overflow: auto;
 }
 
-/* --- Cas 1 : rendu "table" (certaines versions) --- */
+/* Rendu table (certaines versions) */
 .gd-excel-freeze [data-testid="stDataFrame"] table{
   border-collapse: separate !important;
   border-spacing: 0 !important;
 }
-
-/* header col 1 */
 .gd-excel-freeze [data-testid="stDataFrame"] thead tr th:nth-child(1){
   position: sticky !important;
   left: 0 !important;
   z-index: 6 !important;
-  background: white !important;
+  background: var(--gd-surface) !important;
 }
-
-/* body col 1 */
 .gd-excel-freeze [data-testid="stDataFrame"] tbody tr td:nth-child(1){
   position: sticky !important;
   left: 0 !important;
   z-index: 5 !important;
-  background: white !important;
-  box-shadow: 2px 0 0 rgba(0,0,0,0.12);
+  background: var(--gd-surface) !important;
+  box-shadow: 2px 0 0 rgba(2,6,23,0.10);
 }
 
-/* --- Cas 2 : rendu "grid" (le plus fréquent sur data_editor) --- */
-/* colonne header */
+/* Rendu grid (data_editor fréquent) */
 .gd-excel-freeze [data-testid="stDataFrame"] [role="columnheader"]:nth-child(1){
   position: sticky !important;
   left: 0 !important;
   z-index: 6 !important;
-  background: white !important;
+  background: var(--gd-surface) !important;
 }
-
-/* cellules */
-.gd-excel-freeze [data-testid="stDataFrame"] [role="row"] > div:nth-child(1){
-  position: sticky !important;
-  left: 0 !important;
-  z-index: 5 !important;
-  background: white !important;
-  box-shadow: 2px 0 0 rgba(0,0,0,0.12);
-}
-
-/* si Streamlit ajoute un wrapper interne */
+.gd-excel-freeze [data-testid="stDataFrame"] [role="row"] > div:nth-child(1),
 .gd-excel-freeze [data-testid="stDataFrame"] [role="row"] > [role="gridcell"]:nth-child(1){
   position: sticky !important;
   left: 0 !important;
   z-index: 5 !important;
-  background: white !important;
-  box-shadow: 2px 0 0 rgba(0,0,0,0.12);
+  background: var(--gd-surface) !important;
+  box-shadow: 2px 0 0 rgba(2,6,23,0.10);
+}
+
+/* ---------------------------------------------------------
+   10) SAFE-GUARDS CHARTS (Plotly / Vega / 3D)
+   -> Neutralise TOUT effet potentiel de filtres/opacity/background
+   --------------------------------------------------------- */
+
+/* Plotly (courbes + 3D) */
+div[data-testid="stPlotlyChart"] svg{
+  background: transparent !important;
+  filter: none !important;
+}
+div[data-testid="stPlotlyChart"] *{
+  filter: none !important;
+}
+/* Canvas plotly (webgl/3d) */
+div[data-testid="stPlotlyChart"] canvas{
+  filter: none !important;
+}
+
+/* Vega/Altair */
+div[data-testid="stVegaLiteChart"] svg{
+  background: transparent !important;
+  filter: none !important;
+}
+div[data-testid="stVegaLiteChart"] *{
+  filter: none !important;
+}
+
+/* Empêche une opacity héritée d’impacter les graphes */
+div[data-testid="stPlotlyChart"] text,
+div[data-testid="stVegaLiteChart"] text{
+  opacity: 1 !important;
+}
+
+/* ---------------------------------------------------------
+   11) DIALOGS: style "danger" uniquement dans les modales
+   (évite d’écraser les boutons primary partout)
+   --------------------------------------------------------- */
+div[role="dialog"] div[data-testid="stButton"] button[kind="primary"].gd-danger,
+div[role="dialog"] div[data-testid="stButton"] button[kind="primary"][data-gd="danger"]{
+  background: #DC2626 !important;
+  border-color: #DC2626 !important;
 }

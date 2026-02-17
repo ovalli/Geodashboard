@@ -1,5 +1,4 @@
-import pathlib
-print("APP:", pathlib.Path(__file__).resolve())
+from __future__ import annotations
 
 from pathlib import Path
 import os
@@ -7,19 +6,16 @@ import zipfile
 from datetime import datetime
 
 import streamlit as st
-import streamlit.components.v1 as components
 from streamlit_option_menu import option_menu
 
 from src.io.excel_utils import list_xlsx_in_folder
 from src.ui.app_core_coupes import render_coupes
 from src.ui.app_core_topo import render_topo_projections
 from src.ui.app_core_selection_cible import render_selection_cibles
-
 from src.ui.app_core_import import render_import
 from src.io.import_utils import find_mesures_completes_xlsx
-
-# ✅ nouveau core paramétrage
 from src.ui.app_core_parametrage import render_parametrage
+from src.ui.app_core_terrassements import render_terrassements
 
 
 # ======================================================
@@ -28,14 +24,11 @@ from src.ui.app_core_parametrage import render_parametrage
 ROOT = Path(__file__).parent.resolve()
 ASSETS = ROOT / "assets"
 STYLES = ROOT / "styles"
-
 DATA_DIR = ROOT / "data"
 COMMON_DATA = DATA_DIR / "common_data"
 
+print("APP:", Path(__file__).resolve())
 
-# ======================================================
-# ENV (local vs cloud)
-# ======================================================
 GEODASH_ENV = os.getenv("GEODASH_ENV", "local").strip().lower()
 IS_LOCAL = GEODASH_ENV == "local"
 
@@ -48,320 +41,318 @@ st.set_page_config(
 
 
 # ======================================================
-# BACKUP SILENCIEUX (LOCAL ONLY)
+# STARTUP: BACKUP LOCAL SILENCIEUX
 # ======================================================
-def _should_exclude_path(rel_path: str) -> bool:
-    parts = rel_path.split(os.sep)
-    exclude_dirs = {
-        ".git", "__pycache__", ".pytest_cache", ".mypy_cache",
-        ".venv", "venv", "env", "node_modules",
-        ".idea", ".vscode",
-        "backup", "_backups",
-    }
-    return any(p in exclude_dirs for p in parts)
+EXCLUDE_DIRS = {
+    ".git", "__pycache__", ".pytest_cache", ".mypy_cache",
+    ".venv", "venv", "env", "node_modules",
+    ".idea", ".vscode",
+    "backup", "_backups",
+}
 
 
-def _create_project_backup_zip(project_root: Path, backups_dir: Path, keep_last: int = 30):
-    backups_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    zip_path = backups_dir / f"GeoDashboard_FULL_{ts}.zip"
-
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        for folder, subfolders, filenames in os.walk(project_root):
-            rel_folder = os.path.relpath(folder, project_root)
-            if rel_folder == ".":
-                rel_folder = ""
-
-            subfolders[:] = [d for d in subfolders if not _should_exclude_path(d)]
-
-            for fn in filenames:
-                abs_path = os.path.join(folder, fn)
-                rel_path = os.path.normpath(os.path.join(rel_folder, fn))
-                if _should_exclude_path(rel_path):
-                    continue
-                zf.write(abs_path, rel_path)
-
-    zips = sorted(
-        backups_dir.glob("GeoDashboard_FULL_*.zip"),
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-    for old in zips[keep_last:]:
-        try:
-            old.unlink()
-        except Exception:
-            pass
+def _should_exclude(rel_path: str) -> bool:
+    return any(p in EXCLUDE_DIRS for p in rel_path.split(os.sep))
 
 
-if IS_LOCAL and ("did_startup_backup" not in st.session_state):
+def _startup_backup_local(project_root: Path, keep_last: int = 30) -> None:
+    if not IS_LOCAL or st.session_state.get("did_startup_backup"):
+        return
     st.session_state["did_startup_backup"] = True
+
     try:
-        DESKTOP_BACKUP_DIR = Path(os.path.expanduser("~/Desktop/backup")).resolve()
-        _create_project_backup_zip(ROOT, DESKTOP_BACKUP_DIR)
+        backups_dir = Path(os.path.expanduser("~/Desktop/backup")).resolve()
+        backups_dir.mkdir(parents=True, exist_ok=True)
+
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        zip_path = backups_dir / f"GeoDashboard_FULL_{ts}.zip"
+
+        with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for folder, subfolders, filenames in os.walk(project_root):
+                rel_folder = os.path.relpath(folder, project_root)
+                rel_folder = "" if rel_folder == "." else rel_folder
+
+                subfolders[:] = [d for d in subfolders if not _should_exclude(d)]
+
+                for fn in filenames:
+                    abs_path = os.path.join(folder, fn)
+                    rel_path = os.path.normpath(os.path.join(rel_folder, fn))
+                    if _should_exclude(rel_path):
+                        continue
+                    zf.write(abs_path, rel_path)
+
+        # prune
+        zips = sorted(
+            backups_dir.glob("GeoDashboard_FULL_*.zip"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for old in zips[keep_last:]:
+            try:
+                old.unlink()
+            except Exception:
+                pass
     except Exception:
         pass
+
+
+_startup_backup_local(ROOT)
 
 
 # ======================================================
 # CSS
 # ======================================================
-css_path = STYLES / "main.css"
-if css_path.exists():
-    components.html(
-        f"<style>{css_path.read_text(encoding='utf-8')}</style>",
-        height=0,
-        scrolling=False,
-    )
+def _inject_css(styles_dir: Path) -> None:
+    css_path = styles_dir / "main.css"
+    if not css_path.exists():
+        return
+    css = css_path.read_text(encoding="utf-8")
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
+
+
+_inject_css(STYLES)
 
 
 # ======================================================
-# UTILS
+# COUPES DEPUIS EXCEL: LISTE FICHIERS
 # ======================================================
-def pretty_xlsx_name(filename: str) -> str:
+def _pretty_xlsx_name(filename: str) -> str:
     name = filename[:-5] if filename.lower().endswith(".xlsx") else filename
     return name[8:] if len(name) > 8 else name
 
 
-def _get_abs_path(display_map: dict, display_name: str) -> str:
+def _build_display_map(xlsx_files: list[str]) -> dict[str, str]:
+    display_map: dict[str, str] = {}
+    counts: dict[str, int] = {}
+    for fn in xlsx_files:
+        disp = _pretty_xlsx_name(fn)
+        n = counts.get(disp, 0) + 1
+        counts[disp] = n
+        if n > 1:
+            disp = f"{disp} ({n})"
+        display_map[disp] = fn
+    return display_map
+
+
+def _abs_xlsx_path(display_map: dict[str, str], display_name: str) -> str:
     fn = display_map.get(display_name)
-    if not fn:
-        return ""
-    return str((DATA_DIR / fn).resolve())
+    return str((DATA_DIR / fn).resolve()) if fn else ""
+
+
+XLSX_FILES = list_xlsx_in_folder(DATA_DIR)
+DISPLAY_MAP = _build_display_map(XLSX_FILES)
+DISPLAY_NAMES = list(DISPLAY_MAP.keys())
 
 
 # ======================================================
-# DATA : LISTE EXCEL (utilisée pour "Coupes depuis Excel")
+# NAV
 # ======================================================
-xlsx_files = list_xlsx_in_folder(DATA_DIR)
+NAV = {
+    "Coupes": "file-earmark-text",
+    "2D": "layers",
+    "3D": "badge-3d",
+    "Terrassements": "truck-flatbed",
+    "Paramètres chantier": "sliders",
+    "Projections topographiques": "map",
+    "Sélection des zones": "bounding-box",
+    "Inclinomètres": "activity",
+    "Import": "cloud-upload",
+    "Export": "download",
+    "Profil": "person-circle",
+    "Coupes depuis Excel": "file-earmark-spreadsheet",
+}
 
-display_map: dict[str, str] = {}
-counter: dict[str, int] = {}
-for fn in xlsx_files:
-    disp = pretty_xlsx_name(fn)
-    if disp in counter:
-        counter[disp] += 1
-        disp = f"{disp} ({counter[disp]})"
-    else:
-        counter[disp] = 1
-    display_map[disp] = fn
+SIDEBAR_STYLES = {
+    "container": {"padding": "0!important"},
+    "icon": {"font-size": "0.95rem", "opacity": "0.85"},
+    "nav-link": {
+        "font-size": "0.92rem",
+        "padding": "6px 10px",
+        "border-radius": "0.5rem",
+        "transition": "background-color 120ms ease",
+    },
+    "nav-link-hover": {"background-color": "rgba(0,0,0,0.06)"},
+    "nav-link-selected": {
+        "background-color": "rgba(0,0,0,0.10)",
+        "font-weight": "700",
+        "border-radius": "0.5rem",
+    },
+}
 
-display_names = list(display_map.keys())
-
-
-# ======================================================
-# NAV PRINCIPALE
-# ======================================================
-NAV_COUPES_EXCEL = "Coupes depuis Excel"
-NAV_CST = "Coupes"  # ✅ on garde le menu
-NAV_3D = "3D"
-NAV_PARAM = "Paramétrage"
-NAV_TOPO = "Projections topographiques"
-NAV_SEL_CIBLES = "Sélection des zones"
-NAV_INCL = "Inclinomètres"
-NAV_IMPORT = "Import"
-NAV_EXPORT = "Export"
-NAV_PROFIL = "Profil"
-
-main_nav_items = [
-    NAV_COUPES_EXCEL,
-    NAV_CST,          # ✅ rétabli
-    NAV_3D,
-    NAV_PARAM,
-    NAV_TOPO,
-    NAV_SEL_CIBLES,
-    NAV_INCL,
-    NAV_IMPORT,
-    NAV_EXPORT,
-    NAV_PROFIL,
-]
-
-main_nav_icons = [
-    "file-earmark-spreadsheet",
-    "file-earmark-text",   # ✅ comme avant
-    "badge-3d",
-    "sliders",
-    "map",
-    "bounding-box",
-    "activity",
-    "cloud-upload",
-    "download",
-    "person-circle",
-]
-
-if "main_nav" not in st.session_state:
-    st.session_state["main_nav"] = NAV_COUPES_EXCEL
+TABS_STYLES = {
+    "container": {"padding": "0!important"},
+    "icon": {"display": "none"},
+    "nav-link": {
+        "font-size": "0.90rem",
+        "padding": "8px 10px",
+        "margin": "0 4px 0 0",
+        "border-radius": "0.6rem",
+        "white-space": "nowrap",
+        "transition": "background-color 120ms ease",
+    },
+    "nav-link-hover": {"background-color": "rgba(0,0,0,0.06)"},
+    "nav-link-selected": {
+        "background-color": "rgba(0,0,0,0.10)",
+        "font-weight": "700",
+        "border-radius": "0.6rem",
+    },
+}
 
 
-# ======================================================
-# SIDEBAR
-# ======================================================
-with st.sidebar:
-    logo_path = ASSETS / "logo.png"
-    if logo_path.exists():
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
-            st.image(str(logo_path), width=140)
-    else:
-        st.markdown("## ⚫")
+def _sidebar_nav() -> str:
+    with st.sidebar:
+        logo = ASSETS / "logo.png"
+        if logo.exists():
+            c1, c2, c3 = st.columns([1, 2, 1])
+            with c2:
+                st.image(str(logo), width=140)
+        else:
+            st.markdown("## ⚫")
 
-    st.divider()
+        st.divider()
 
-    selected_page = option_menu(
-        menu_title=None,
-        options=main_nav_items,
-        icons=main_nav_icons,
-        orientation="vertical",
-        key="main_nav",
-        styles={
-            "container": {"padding": "0!important"},
-            "icon": {"font-size": "0.95rem", "opacity": "0.85"},
-            "nav-link": {
-                "font-size": "0.92rem",
-                "padding": "6px 10px",
-                "border-radius": "0.5rem",
-                "transition": "background-color 120ms ease",
-            },
-            "nav-link-hover": {"background-color": "rgba(0,0,0,0.06)"},
-            "nav-link-selected": {
-                "background-color": "rgba(0,0,0,0.10)",
-                "font-weight": "700",
-                "border-radius": "0.5rem",
-            },
-        },
-    )
+        return option_menu(
+            menu_title=None,
+            options=list(NAV.keys()),
+            icons=list(NAV.values()),
+            orientation="vertical",
+            key="main_nav",
+            styles=SIDEBAR_STYLES,
+        )
 
 
 # ======================================================
-# ROUTING
+# PAGES (✅ sans subheader)
 # ======================================================
-if selected_page == NAV_IMPORT:
+def page_import() -> None:
     render_import(COMMON_DATA)
-    st.stop()
 
-if selected_page == NAV_EXPORT:
-    st.subheader("Export")
-    st.stop()
 
-if selected_page == NAV_PROFIL:
-    st.subheader("Profil")
-    st.stop()
+def page_export() -> None:
+    pass
 
-# --- Coupes depuis Excel
-if selected_page == NAV_COUPES_EXCEL:
-    if not display_names:
+
+def page_profil() -> None:
+    pass
+
+
+def page_coupes_excel() -> None:
+    if not DISPLAY_NAMES:
         st.error("Aucun fichier .xlsx trouvé dans data/")
-        st.stop()
-
-    st.subheader("Coupes depuis Excel")
+        return
 
     selected_coupe = option_menu(
         menu_title=None,
-        options=display_names,
-        icons=[""] * len(display_names),
+        options=DISPLAY_NAMES,
+        icons=[""] * len(DISPLAY_NAMES),
         orientation="horizontal",
         key="coupes_tabs",
-        styles={
-            "container": {"padding": "0!important"},
-            "icon": {"display": "none"},
-            "nav-link": {
-                "font-size": "0.90rem",
-                "padding": "8px 10px",
-                "margin": "0 4px 0 0",
-                "border-radius": "0.6rem",
-                "white-space": "nowrap",
-                "transition": "background-color 120ms ease",
-            },
-            "nav-link-hover": {"background-color": "rgba(0,0,0,0.06)"},
-            "nav-link-selected": {
-                "background-color": "rgba(0,0,0,0.10)",
-                "font-weight": "700",
-                "border-radius": "0.6rem",
-            },
-        },
+        styles=TABS_STYLES,
     )
 
-    xlsx_abs_path = _get_abs_path(display_map, selected_coupe)
-    if not xlsx_abs_path:
+    xlsx_abs = _abs_xlsx_path(DISPLAY_MAP, selected_coupe)
+    if not xlsx_abs:
         st.error("Fichier introuvable.")
-        st.stop()
+        return
 
-    render_coupes(xlsx_abs_path, 0)
-    st.stop()
+    render_coupes(xlsx_abs, 0)
 
-# --- ✅ Coupes depuis CST (menu conservé, backend JSON-only)
-if selected_page == NAV_CST:
-    # On conserve la page/label, mais on ne dépend plus du fichier CST.
-    st.subheader("Coupes depuis CST")
 
+def page_coupes_cst() -> None:
     try:
         from src.ui.app_core_coupes_cst import render_coupes_cst
-        render_coupes_cst()  # ⚠️ doit être JSON-only côté module
+        render_coupes_cst()
+        return
     except Exception as e:
-        # fallback propre : on n'empêche pas l'app de tourner
         st.info("Cette page doit désormais lire le JSON (plus de Charges sur Trame.xlsx).")
         st.error("💥 Page 'Coupes depuis CST' cassée (erreur réelle ci-dessous) :")
         st.exception(e)
 
-        # fallback utile : on t'amène vers le paramétrage (JSON)
-        st.divider()
-        st.caption("Fallback : affichage Paramètrage (JSON).")
-        try:
-            render_parametrage()
-        except Exception as e2:
-            st.error("💥 Fallback Paramètrage cassé :")
-            st.exception(e2)
+    st.divider()
+    try:
+        render_parametrage()
+    except Exception as e2:
+        st.error("💥 Fallback Paramètrage cassé :")
+        st.exception(e2)
 
-    st.stop()
 
-# --- 3D
-if selected_page == NAV_3D:
+def page_2d() -> None:
+    # ✅ Vide pour l’instant (placeholder)
+    # (On remplira plus tard)
+    pass
+
+
+def page_3d() -> None:
     try:
         import src.ui.app_core_3d as app_core_3d
     except Exception as e:
         st.error("💥 3D est cassé (erreur réelle ci-dessous) :")
         st.exception(e)
-        st.stop()
+        return
 
     if not hasattr(app_core_3d, "render_3d"):
         st.error("💥 3D est cassé : render_3d() introuvable dans src/ui/app_core_3d.py")
-        st.stop()
+        return
 
     try:
         app_core_3d.render_3d()
     except Exception as e:
         st.error("💥 3D est cassé (erreur réelle ci-dessous) :")
         st.exception(e)
-        st.stop()
 
-    st.stop()
 
-# --- ✅ Paramètrage (JSON-only)
-if selected_page == NAV_PARAM:
+def page_terrassements() -> None:
+    try:
+        render_terrassements()
+    except Exception as e:
+        st.error("💥 Terrassements est cassé (erreur réelle ci-dessous) :")
+        st.exception(e)
+
+
+def page_parametres_chantier() -> None:
     render_parametrage()
-    st.stop()
 
-# --- Topo
-if selected_page == NAV_TOPO:
-    st.subheader("Projections topographiques")
 
+def page_topo() -> None:
     mesures_path = find_mesures_completes_xlsx(COMMON_DATA)
     if mesures_path is None or not mesures_path.exists():
         st.error(f"Fichier Mesures Completes introuvable dans : {COMMON_DATA}")
-        st.stop()
-
+        return
     render_topo_projections("GLOBAL", str(mesures_path), 0)
-    st.stop()
 
-# --- Sélection des zones (JSON-only)
-if selected_page == NAV_SEL_CIBLES:
-    st.subheader("Sélection des zones")
+
+def page_selection_zones() -> None:
     render_selection_cibles("GLOBAL", None, 0)
-    st.stop()
 
-# --- Inclino
-if selected_page == NAV_INCL:
-    st.subheader("Inclinomètres")
+
+def page_inclino() -> None:
     st.info("Page en cours de construction")
-    st.stop()
 
-st.error("Navigation inconnue.")
+
+ROUTES: dict[str, callable] = {
+    "Import": page_import,
+    "Export": page_export,
+    "Profil": page_profil,
+    "Coupes": page_coupes_cst,
+    "2D": page_2d,  # ✅ nouveau placeholder
+    "3D": page_3d,
+    "Terrassements": page_terrassements,
+    "Paramètres chantier": page_parametres_chantier,
+    "Projections topographiques": page_topo,
+    "Sélection des zones": page_selection_zones,
+    "Inclinomètres": page_inclino,
+    "Coupes depuis Excel": page_coupes_excel,
+}
+
+
+# ======================================================
+# RUN
+# ======================================================
+selected_page = _sidebar_nav()
+handler = ROUTES.get(selected_page)
+
+if not handler:
+    st.error("Navigation inconnue.")
+else:
+    handler()
+    st.stop()

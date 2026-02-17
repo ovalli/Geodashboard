@@ -1,9 +1,11 @@
 [theme]
 base="light"
-primaryColor="#2F6BFF"
-backgroundColor="#FFFFFF"
-secondaryBackgroundColor="#F6F7FB"
-textColor="#0B1220"
+
+primaryColor="#0F172A"                # Bleu ardoise profond (accent sérieux)
+backgroundColor="#F8FAFC"             # Gris très clair neutre
+secondaryBackgroundColor="#115cbd"    # Gris doux pour blocs / sidebar
+textColor="#0B1220"                   # Presque noir, plus dense
 font="sans serif"
+
 [client]
 showSidebarNavigation = false

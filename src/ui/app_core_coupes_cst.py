@@ -1,79 +1,69 @@
 # ======================================================
-# src/ui/app_core_coupes_cst.py  (COMPLET)
-# - Onglets coupes (streamlit-option-menu) + bouton +
+# src/ui/app_core_coupes_cst.py  (COMPACT + FACTORISÉ)
+# - Onglets coupes (streamlit-option-menu) + bouton ajout
 # - 🗑️ supprimer / ✏️ renommer la coupe sélectionnée
 # - Affiche les figures topo de la coupe sélectionnée
 #
-# ✅ NEW: chaque onglet affiche un indicateur de couleur (emoji) basé sur
-#         la couleur stockée dans le JSON (champ "color")
-#         -> PAS d'HTML dans les labels (option_menu échappe le HTML)
+# ✅ UX Streamlit-native:
+# - Rename via st.dialog + st.form => Enter valide, croix ferme
+# - Delete via st.dialog simplifié:
+#     - UNE seule ligne: "Confirmer la suppression de la coupe XXXX"
+#     - UN seul gros bouton rouge "🗑 Supprimer"
+#     - croix pour fermer/annuler
 #
-# IMPORTANT: aucun changement de fonctionnement ni de design,
-#            juste un préfixe emoji dans le texte de l’onglet.
+# ✅ FIX landing after rename/add/delete:
+# - option_menu key versionnée (cst_tabs_version)
 #
-# ✅ MODIF (JSON-only):
-# - CoupesManager ne prend plus workbook_path => on ne lui passe plus jamais.
-# - On ne dépend plus de mgr.pg_path (attribut interne) : on utilise common_data_dir.
+# ✅ IMPORTANT:
+# - AUCUNE CSS globale sur nav (ne casse pas les autres menus)
+#
+# ✅ PERF:
+# - read_targets_timeseries(..., mtime=cache_buster mtime+size) => invalide cache si xlsx change
+# - permet la voie "ultra rapide" openpyxl streaming côté reader
 # ======================================================
 
 from __future__ import annotations
 
 from pathlib import Path
+import math
+from typing import Iterable
+
 import streamlit as st
 from streamlit_option_menu import option_menu
+import plotly.graph_objects as go
 
 from src.io.coupes_manager import CoupesManager
 from src.pipeline.mesures_completes_reader import read_targets_timeseries, compute_deltas_vs_first_known
 from src.render.plots.topo_targets_plotly import build_topo_figures_for_zone
 
-
 # ======================================================
-# Palette (fallback) + mapping emoji (safe)
-# (même palette que Sélection des cibles)
+# Palette + mapping emoji
 # ======================================================
 _ZONE_PALETTE = ["#146EFF", "#22C55E", "#F97316", "#A855F7", "#EF4444", "#06B6D4", "#EAB308", "#EC4899"]
 _ZONE_EMOJI = ["🔵", "🟢", "🟠", "🟣", "🔴", "🟦", "🟡", "🩷"]
-
-_COLOR_TO_EMOJI = {
-    "#146EFF": "🔵",
-    "#22C55E": "🟢",
-    "#F97316": "🟠",
-    "#A855F7": "🟣",
-    "#EF4444": "🔴",
-    "#06B6D4": "🟦",
-    "#EAB308": "🟡",
-    "#EC4899": "🩷",
-}
+_COLOR_TO_EMOJI = dict(zip(_ZONE_PALETTE, _ZONE_EMOJI))
 
 
-def _zone_color(i: int) -> str:
+def _emoji(color: str, i: int) -> str:
+    c = (color or "").strip()
+    return _COLOR_TO_EMOJI.get(c, _ZONE_EMOJI[i % len(_ZONE_EMOJI)])
+
+
+def _fallback_color(i: int) -> str:
     return _ZONE_PALETTE[i % len(_ZONE_PALETTE)]
-
-
-def _zone_emoji(i: int) -> str:
-    return _ZONE_EMOJI[i % len(_ZONE_EMOJI)]
-
-
-def _emoji_from_color(col: str, fallback_i: int) -> str:
-    col = (col or "").strip()
-    return _COLOR_TO_EMOJI.get(col, _zone_emoji(fallback_i))
 
 
 # ======================================================
 # Project paths (robuste, JSON-only)
 # ======================================================
-def _project_root() -> Path:
-    here = Path(__file__).resolve()
-    for p in [here.parent, *here.parents]:
-        if (p / "data" / "common_data").exists():
-            return p
-        if (p / "app.py").exists():
-            return p
-    return here.parents[2]
-
-
 def _common_data_dir() -> Path:
-    d = _project_root() / "data" / "common_data"
+    here = Path(__file__).resolve()
+    for p in (here.parent, *here.parents):
+        if (p / "data" / "common_data").exists() or (p / "app.py").exists():
+            d = p / "data" / "common_data"
+            d.mkdir(parents=True, exist_ok=True)
+            return d
+    d = here.parents[2] / "data" / "common_data"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -84,91 +74,258 @@ def _common_data_dir() -> Path:
 def _find_mesures_completes_xlsx(common_data_dir: Path) -> Path | None:
     if not common_data_dir.exists():
         return None
-    needles = ["mesures completes", "mesures complètes", "mesures complete", "mesures compl"]
-    candidates: list[Path] = []
-    for p in common_data_dir.iterdir():
-        if p.is_file() and p.suffix.lower() == ".xlsx":
-            stem = p.stem.lower()
-            if any(n in stem for n in needles):
-                candidates.append(p)
-    if not candidates:
-        return None
-    candidates.sort(key=lambda x: x.stat().st_mtime, reverse=True)
-    return candidates[0]
+    needles = ("mesures completes", "mesures complètes", "mesures complete", "mesures compl")
+    files = [
+        p
+        for p in common_data_dir.iterdir()
+        if p.is_file() and p.suffix.lower() == ".xlsx" and any(n in p.stem.lower() for n in needles)
+    ]
+    return max(files, key=lambda p: p.stat().st_mtime) if files else None
 
 
-def _css_buttons() -> None:
+def _cache_buster_mtime_size(p: Path) -> float:
+    """
+    Cache-buster robuste (aligné 3D topo):
+    - combine mtime + size pour invalider le cache même si mtime peu fiable
+    """
+    try:
+        stt = p.stat()
+        return float(stt.st_mtime) + float(getattr(stt, "st_size", 0)) * 1e-9
+    except Exception:
+        try:
+            return float(p.stat().st_mtime)
+        except Exception:
+            return 0.0
+
+
+def _ss_defaults(**defaults) -> None:
+    for k, v in defaults.items():
+        st.session_state.setdefault(k, v)
+
+
+def _bump_tabs() -> None:
+    st.session_state["cst_tabs_version"] = int(st.session_state.get("cst_tabs_version", 0)) + 1
+
+
+def _rerun_after(toast: str | None = None, icon: str | None = None) -> None:
+    if toast:
+        st.toast(toast, icon=icon)
+    st.rerun()
+
+
+def _next_default_coupe_name(existing: Iterable[str]) -> str:
+    s = set(existing)
+    n = len(s) + 1
+    while True:
+        cand = f"Coupe {n}"
+        if cand not in s:
+            return cand
+        n += 1
+
+
+def _css_safe() -> None:
     st.markdown(
         """
 <style>
-div[data-testid="stButton"] button[kind="secondary"] { line-height: 1; }
-
-div.cst-trash div[data-testid="stButton"] button {
-  background: rgba(239,68,68,0.12) !important;
-  border: 1px solid rgba(239,68,68,0.35) !important;
-  color: rgb(239,68,68) !important;
-  padding: 0.25rem 0.55rem !important;
-  border-radius: 0.55rem !important;
-}
-
-div.cst-edit div[data-testid="stButton"] button {
-  background: rgba(59,130,246,0.12) !important;
-  border: 1px solid rgba(59,130,246,0.35) !important;
-  color: rgb(59,130,246) !important;
-  padding: 0.25rem 0.55rem !important;
-  border-radius: 0.55rem !important;
-}
-
-div.cst-plus div[data-testid="stButton"] button {
-  background: rgba(16,185,129,0.14) !important;
-  border: 1px solid rgba(16,185,129,0.35) !important;
-  color: rgb(16,185,129) !important;
-  padding: 0.30rem 0.60rem !important;
-  border-radius: 0.60rem !important;
-  font-weight: 700 !important;
-}
+div[data-testid="column"] { padding-top: 0 !important; }
 </style>
         """,
         unsafe_allow_html=True,
     )
 
 
+def _strip_fig(fig: go.Figure) -> go.Figure:
+    """Fix 'undefined' + pas de légende + X sans titre + Y = mm."""
+    try:
+        fig.update_layout(title_text="", showlegend=False, legend_title_text="")
+        fig.update_xaxes(title_text="")
+        fig.update_yaxes(title_text="mm")  # ✅ unité verticale
+        # enlever annotation "undefined"
+        try:
+            fig.layout.annotations = tuple(
+                a
+                for a in (fig.layout.annotations or [])
+                if (getattr(a, "text", "") or "").strip().lower() != "undefined"
+            )
+        except Exception:
+            pass
+    except Exception:
+        pass
+    return fig
+
+
+def _legend_only(figs: list[go.Figure], items_per_row: int = 4) -> go.Figure:
+    """Figure Plotly qui n'affiche QUE la légende (hauteur dynamique)."""
+
+    def _colors(t):
+        line_c = getattr(getattr(t, "line", None), "color", None)
+        m = getattr(t, "marker", None)
+        return line_c, getattr(m, "color", None) if m else None, getattr(m, "symbol", None) if m else None
+
+    seen, items = set(), []
+    for f in figs:
+        for t in (getattr(f, "data", None) or []):
+            name = getattr(t, "name", None)
+            if not name:
+                continue
+            lc, mc, ms = _colors(t)
+            key = (str(name), str(lc), str(mc), str(ms))
+            if key in seen:
+                continue
+            seen.add(key)
+            items.append((str(name), lc, mc, ms))
+
+    n = len(items)
+    items_per_row = max(1, int(items_per_row))
+    rows = max(1, int(math.ceil(n / items_per_row))) if n else 1
+    height = 40 + rows * 28
+
+    lf = go.Figure()
+    for name, lc, mc, ms in items:
+        lf.add_trace(
+            go.Scatter(
+                x=[None],
+                y=[None],
+                mode="lines+markers",
+                name=name,
+                line={"color": lc} if lc else None,
+                marker=({"color": mc, "symbol": ms} if (mc or ms) else None),
+                hoverinfo="skip",
+                showlegend=True,
+            )
+        )
+    lf.update_layout(
+        height=height,
+        margin=dict(l=0, r=0, t=0, b=0),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        title_text="",
+        legend_title_text="",
+        showlegend=True,
+        legend=dict(orientation="h", x=0.0, y=1.0, xanchor="left", yanchor="top"),
+    )
+    lf.update_xaxes(showgrid=False, zeroline=False)
+    lf.update_yaxes(showgrid=False, zeroline=False)
+    return lf
+
+
+def _add_coupe_and_select(mgr: CoupesManager, name: str) -> None:
+    mgr.add_coupe(name)
+    st.session_state["cst_selected_coupe"] = name
+    _bump_tabs()
+    _rerun_after("Coupe créée ✅", icon="✅")
+
+
+# ======================================================
+# Dialogs
+# ======================================================
+@st.dialog("Renommer la coupe")
+def _dialog_rename(mgr: CoupesManager, old_name: str) -> None:
+    _ss_defaults(cst_rename_value=old_name)
+
+    with st.form("cst_rename_form", clear_on_submit=False):
+        new_val = st.text_input(
+            "Nouveau nom",
+            value=st.session_state.get("cst_rename_value", old_name),
+            key="cst_rename_input",
+            placeholder="Nouveau nom…",
+        )
+        c1, c2 = st.columns([1, 1])
+        ok = c1.form_submit_button("✅ Valider", use_container_width=True)
+        cancel = c2.form_submit_button("Annuler", use_container_width=True)
+
+    if cancel:
+        st.session_state["cst_open_rename"] = False
+        st.rerun()
+
+    if ok:
+        candidate = str(new_val).strip()
+        if not candidate:
+            st.error("Nom vide.")
+            return
+        if candidate == old_name:
+            st.session_state["cst_open_rename"] = False
+            st.rerun()
+        try:
+            mgr.rename_coupe(old_name, candidate)
+        except Exception as e:
+            st.error(f"Impossible de renommer: {type(e).__name__}: {e}")
+            return
+
+        st.session_state["cst_selected_coupe"] = candidate
+        st.session_state["cst_open_rename"] = False
+        _bump_tabs()
+        _rerun_after("Coupe renommée ✅", icon="✅")
+
+
+@st.dialog(" ")
+def _dialog_delete_simplified(mgr: CoupesManager) -> None:
+    name = str(st.session_state.get("cst_delete_candidate", "")).strip()
+    if not name:
+        st.session_state["cst_open_delete"] = False
+        st.rerun()
+
+    st.markdown(f"### Confirmer la suppression de la coupe **{name}**")
+    st.markdown(
+        """
+<style>
+div[data-testid="stButton"] button[kind="primary"]{
+  background: #dc2626 !important;
+  border-color: #dc2626 !important;
+}
+div[data-testid="stButton"] button[kind="primary"]:hover{ filter: brightness(0.95); }
+</style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if st.button("🗑 Supprimer", type="primary", use_container_width=True, key="cst_delete_red_btn"):
+        try:
+            mgr.delete_coupe(name)
+        except Exception as e:
+            st.error(f"Impossible de supprimer: {type(e).__name__}: {e}")
+            return
+        st.session_state["cst_open_delete"] = False
+        _bump_tabs()
+        _rerun_after("Coupe supprimée ✅", icon="✅")
+
+
+# ======================================================
+# UI blocks
+# ======================================================
 def _render_coupe_selector(coupes) -> tuple[str, bool]:
-    """
-    Onglets coupes (option_menu) + bouton +
-    ✅ NEW: préfixe emoji de couleur (safe, pas d'HTML)
-    Retourne (selected_coupe_name, did_plus)
-    """
-    coupe_names = [c.name for c in coupes]
+    names = [c.name for c in coupes]
+    _ss_defaults(cst_selected_coupe=(names[0] if names else ""), cst_tabs_version=0)
 
-    if "cst_selected_coupe" not in st.session_state:
-        st.session_state["cst_selected_coupe"] = coupe_names[0]
+    selected = st.session_state.get("cst_selected_coupe") or (names[0] if names else "")
+    if selected not in names and names:
+        selected = names[0]
+        st.session_state["cst_selected_coupe"] = selected
 
-    # map "display label" -> true name (option_menu renvoie le label)
-    display_to_name: dict[str, str] = {}
-    display_options: list[str] = []
-
+    display_options, disp2name = [], {}
     for i, c in enumerate(coupes):
-        col = (getattr(c, "color", "") or "").strip() or _zone_color(i)
-        emo = _emoji_from_color(col, i)
-        disp = f"{emo} {c.name}"
-        display_to_name[disp] = c.name
+        col = (getattr(c, "color", "") or "").strip() or _fallback_color(i)
+        disp = f"{_emoji(col, i)} {c.name}"
         display_options.append(disp)
+        disp2name[disp] = c.name
 
-    # valeur par défaut (display label) depuis le name en session
-    default_name = st.session_state["cst_selected_coupe"]
-    default_disp = next((d for d, n in display_to_name.items() if n == default_name), display_options[0])
+    # default index
+    def_idx = 0
+    for i, d in enumerate(display_options):
+        if disp2name.get(d) == selected:
+            def_idx = i
+            break
 
-    c_tabs, c_plus = st.columns([20, 1], vertical_alignment="center")
-
+    c_tabs, c_plus = st.columns([18, 2], vertical_alignment="center")
     with c_tabs:
+        v = int(st.session_state.get("cst_tabs_version", 0))
         selected_disp = option_menu(
             menu_title=None,
             options=display_options,
             icons=[""] * len(display_options),
             orientation="horizontal",
-            key="cst_coupe_tabs",
-            default_index=display_options.index(default_disp) if default_disp in display_options else 0,
+            key=f"cst_coupe_tabs__v{v}",
+            default_index=def_idx,
             styles={
                 "container": {"padding": "0!important"},
                 "icon": {"display": "none"},
@@ -188,213 +345,101 @@ def _render_coupe_selector(coupes) -> tuple[str, bool]:
                 },
             },
         )
-
     with c_plus:
-        st.markdown('<div class="cst-plus">', unsafe_allow_html=True)
         did_plus = st.button("+", key="cst_add_plus", help="Ajouter une coupe", type="secondary")
-        st.markdown("</div>", unsafe_allow_html=True)
 
-    selected_name = display_to_name.get(selected_disp, coupe_names[0])
-    st.session_state["cst_selected_coupe"] = selected_name
-    return selected_name, did_plus
-
-
-def _render_add_coupe_inline(mgr: CoupesManager) -> bool:
-    if "cst_add_mode" not in st.session_state:
-        st.session_state["cst_add_mode"] = False
-    if "cst_new_coupe_name" not in st.session_state:
-        st.session_state["cst_new_coupe_name"] = ""
-
-    if not st.session_state["cst_add_mode"]:
-        return False
-
-    c1, c2, c3 = st.columns([5, 1, 1], vertical_alignment="center")
-    with c1:
-        st.session_state["cst_new_coupe_name"] = st.text_input(
-            "Nom nouvelle coupe",
-            value=st.session_state["cst_new_coupe_name"],
-            key="cst_new_coupe_input",
-            label_visibility="collapsed",
-            placeholder="Nom de la coupe…",
-        )
-    with c2:
-        if st.button("Créer", type="primary", key="cst_create_coupe"):
-            name = str(st.session_state["cst_new_coupe_name"]).strip()
-            if not name:
-                st.error("Nom vide.")
-                return False
-            try:
-                mgr.add_coupe(name)
-                st.session_state["cst_add_mode"] = False
-                st.session_state["cst_new_coupe_name"] = ""
-                st.session_state["cst_selected_coupe"] = name
-                return True
-            except Exception as e:
-                st.error(f"Impossible de créer la coupe: {type(e).__name__}: {e}")
-    with c3:
-        if st.button("Annuler", key="cst_cancel_add"):
-            st.session_state["cst_add_mode"] = False
-            st.session_state["cst_new_coupe_name"] = ""
-    return False
+    chosen = disp2name.get(selected_disp, selected)
+    st.session_state["cst_selected_coupe"] = chosen
+    return chosen, did_plus
 
 
-def _render_title_actions(mgr: CoupesManager, coupe_name: str) -> tuple[bool, bool, str | None]:
-    """
-    Returns: (did_delete, did_rename, new_name_or_None)
-    """
-    if "cst_delete_confirm" not in st.session_state:
-        st.session_state["cst_delete_confirm"] = None
-
-    if "cst_rename_mode" not in st.session_state:
-        st.session_state["cst_rename_mode"] = False
-    if "cst_rename_value" not in st.session_state:
-        st.session_state["cst_rename_value"] = ""
-
-    did_delete = False
-    did_rename = False
-    new_name: str | None = None
+def _render_title_actions(mgr: CoupesManager, coupe_name: str) -> None:
+    _ss_defaults(cst_open_rename=False, cst_open_delete=False, cst_delete_candidate="")
 
     c_left, c_edit, c_trash = st.columns([20, 1, 1], vertical_alignment="center")
-    with c_left:
-        st.markdown(f"### {coupe_name}")
+    c_left.markdown(f"### {coupe_name}")
 
-    with c_edit:
-        st.markdown('<div class="cst-edit">', unsafe_allow_html=True)
-        if st.button("✏️", key=f"cst_edit_{coupe_name}", help="Renommer cette coupe", type="secondary"):
-            st.session_state["cst_rename_mode"] = True
-            st.session_state["cst_rename_value"] = coupe_name
-        st.markdown("</div>", unsafe_allow_html=True)
+    if c_edit.button("✎", key="cst_edit", help="Renommer cette coupe", type="secondary"):
+        st.session_state["cst_open_rename"] = True
+        st.rerun()
 
-    with c_trash:
-        st.markdown('<div class="cst-trash">', unsafe_allow_html=True)
-        if st.button("🗑️", key=f"cst_trash_{coupe_name}", help="Supprimer cette coupe", type="secondary"):
-            st.session_state["cst_delete_confirm"] = coupe_name
-        st.markdown("</div>", unsafe_allow_html=True)
+    if c_trash.button("🗑", key="cst_trash", help="Supprimer cette coupe", type="secondary"):
+        st.session_state["cst_delete_candidate"] = coupe_name
+        st.session_state["cst_open_delete"] = True
+        st.rerun()
 
-    # rename inline
-    if st.session_state.get("cst_rename_mode", False):
-        r1, r2, r3 = st.columns([5, 1, 1], vertical_alignment="center")
-        with r1:
-            st.session_state["cst_rename_value"] = st.text_input(
-                "Nouveau nom",
-                value=st.session_state["cst_rename_value"],
-                key="cst_rename_input",
-                label_visibility="collapsed",
-                placeholder="Nouveau nom…",
-            )
-        with r2:
-            if st.button("✅", type="primary", key=f"cst_rename_ok_{coupe_name}", help="Valider"):
-                candidate = str(st.session_state["cst_rename_value"]).strip()
-                if not candidate:
-                    st.error("Nom vide.")
-                elif candidate == coupe_name:
-                    st.session_state["cst_rename_mode"] = False
-                    st.session_state["cst_rename_value"] = ""
-                else:
-                    try:
-                        mgr.rename_coupe(coupe_name, candidate)
-                        st.session_state["cst_rename_mode"] = False
-                        st.session_state["cst_rename_value"] = ""
-                        did_rename = True
-                        new_name = candidate
-                    except Exception as e:
-                        st.error(f"Impossible de renommer: {type(e).__name__}: {e}")
-        with r3:
-            if st.button("Annuler", key=f"cst_rename_cancel_{coupe_name}"):
-                st.session_state["cst_rename_mode"] = False
-                st.session_state["cst_rename_value"] = ""
-
-    # delete confirm
-    pending = st.session_state.get("cst_delete_confirm")
-    if pending == coupe_name:
-        st.warning(f"Confirmer la suppression de **{coupe_name}** ?")
-        a, b = st.columns([1, 1])
-        with a:
-            if st.button("✅ Supprimer", type="primary", key=f"cst_confirm_del_{coupe_name}"):
-                try:
-                    mgr.delete_coupe(coupe_name)
-                    st.session_state["cst_delete_confirm"] = None
-                    did_delete = True
-                except Exception as e:
-                    st.error(f"Impossible de supprimer: {type(e).__name__}: {e}")
-        with b:
-            if st.button("Annuler", key=f"cst_cancel_del_{coupe_name}"):
-                st.session_state["cst_delete_confirm"] = None
-
-    return did_delete, did_rename, new_name
+    if st.session_state.get("cst_open_rename"):
+        _dialog_rename(mgr, coupe_name)
+    if st.session_state.get("cst_open_delete"):
+        _dialog_delete_simplified(mgr)
 
 
 # ======================================================
 # Main
 # ======================================================
 def render_coupes_cst() -> None:
-    _css_buttons()
+    _css_safe()
+    mgr = CoupesManager()  # JSON-only
 
-    # ✅ JSON-only
-    mgr = CoupesManager()
-
-    # Mesures Completes (dans data/common_data)
     common = _common_data_dir()
     mesures_path = _find_mesures_completes_xlsx(common)
-    if mesures_path is None or not mesures_path.exists():
+    if not mesures_path or not mesures_path.exists():
         st.error(f"Fichier Mesures Completes introuvable dans {common}")
         return
 
-    # Lecture coupes
     try:
         coupes = mgr.list_coupes()
     except Exception as e:
         st.error(f"Impossible de lire les coupes: {type(e).__name__}: {e}")
         return
 
-    # État: aucune coupe => création inline
+    # ---- No coupes -> create Coupe 1
     if not coupes:
-        st.info("Aucune coupe pour l’instant. Clique sur **+** pour en créer une, ou crée-la ci-dessous.")
-        st.session_state["cst_add_mode"] = True
-        if _render_add_coupe_inline(mgr):
-            st.toast("Coupe créée ✅", icon="✅")
-            st.rerun()
+        st.info("Aucune coupe pour l’instant. Clique sur **+** pour créer automatiquement **Coupe 1**.")
+        if st.button("+", key="cst_add_plus_empty", help="Créer Coupe 1", type="secondary"):
+            try:
+                _add_coupe_and_select(mgr, "Coupe 1")
+            except Exception as e:
+                st.error(f"Impossible de créer la coupe: {type(e).__name__}: {e}")
         return
 
-    # Selector + plus (✅ onglets préfixés emoji couleur)
-    selected_coupe, did_plus = _render_coupe_selector(coupes)
+    selected, did_plus = _render_coupe_selector(coupes)
+
     if did_plus:
-        st.session_state["cst_add_mode"] = True
-        st.session_state["cst_new_coupe_name"] = ""
+        try:
+            new_name = _next_default_coupe_name([c.name for c in coupes])
+            _add_coupe_and_select(mgr, new_name)
+        except Exception as e:
+            st.error(f"Impossible de créer la coupe: {type(e).__name__}: {e}")
+            return
 
-    # inline add
-    if _render_add_coupe_inline(mgr):
-        st.toast("Coupe créée ✅", icon="✅")
-        st.rerun()
-
-    # reload list
+    # Refresh list after any mutation elsewhere
     coupes = mgr.list_coupes()
-    coupe_names = [c.name for c in coupes]
-    if selected_coupe not in coupe_names:
-        selected_coupe = coupe_names[0]
-        st.session_state["cst_selected_coupe"] = selected_coupe
-
-    # header actions
-    did_delete, did_rename, new_name = _render_title_actions(mgr, selected_coupe)
-    if did_delete:
-        st.toast("Coupe supprimée ✅", icon="✅")
-        st.session_state["cst_rename_mode"] = False
-        st.session_state["cst_rename_value"] = ""
+    names = [c.name for c in coupes]
+    if selected not in names and names:
+        st.session_state["cst_selected_coupe"] = names[0]
+        _bump_tabs()
         st.rerun()
 
-    if did_rename and new_name:
-        st.toast("Coupe renommée ✅", icon="✅")
-        st.session_state["cst_selected_coupe"] = new_name
-        st.rerun()
+    selected = st.session_state["cst_selected_coupe"]
+    _render_title_actions(mgr, selected)
 
-    # plot for selected coupe
-    coupe = mgr.get_coupe(st.session_state["cst_selected_coupe"])
-
+    coupe = mgr.get_coupe(selected)
     if not coupe.targets:
         st.info("Aucune cible enregistrée pour cette coupe (targets vide).")
         return
 
-    ts_by_target = read_targets_timeseries(str(mesures_path), coupe.targets, sheet_name=None)
+    # ==================================================
+    # ✅ PERF: cache-buster pour déclencher la voie rapide
+    # ==================================================
+    cache_buster = _cache_buster_mtime_size(mesures_path)
+
+    ts_by_target = read_targets_timeseries(
+        str(mesures_path),
+        coupe.targets,
+        sheet_name=None,
+        mtime=cache_buster,  # ✅ clé de cache + invalidation quand le fichier change
+    )
 
     deltas_by_target = {}
     for name, df in ts_by_target.items():
@@ -411,5 +456,21 @@ def render_coupes_cst() -> None:
         angle_deg=coupe.angle_deg,
         deltas_by_target=deltas_by_target,
     )
-    for fig in figs:
+    if not figs:
+        st.warning("Aucune figure topo générée.")
+        return
+
+    figs = [_strip_fig(f) for f in list(figs)]
+    legend_fig = _legend_only(figs, items_per_row=4)
+
+    st.markdown("### Topographie")
+    labels = ["Mouvements Normaux", "Mouvements Tangentiels", "Mouvements Verticaux"]
+
+    for i, fig in enumerate(figs):
+        if i < 3:
+            st.markdown(f"#### {labels[i]}")
+        else:
+            st.markdown(f"#### Mouvement {i+1}")
         st.plotly_chart(fig, use_container_width=True)
+
+    st.plotly_chart(legend_fig, use_container_width=True)

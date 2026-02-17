@@ -1,15 +1,9 @@
 # ======================================================
 # src/ui/app_core_parametrage_parois.py  (COMPLET)
 # ✅ JSON-only source of truth : Parois.json
-# ✅ Tableau unique (pas d'onglets) :
-#    1 ligne par COUPE, 1ère colonne = Nom coupe
-#    Colonnes :
-#      - Cote Arase Sup.
-#      - Cote Arase Inf.
-#      - Cote Fond de Fouille def.
-#      - Largeur (m) opt.
-# ✅ Même UX que tes autres pages :
-#    - data_editor + Enregistrer
+# ✅ Tableau inversé :
+#    1 ligne par PARAMÈTRE
+#    Colonnes = COUPES
 # ======================================================
 
 from __future__ import annotations
@@ -62,7 +56,6 @@ def _default_paroi_row(coupe_name: str) -> dict:
 
 
 def _normalize_parois_rows(rows_in: Any, coupe_names: list[str]) -> list[dict]:
-    # On veut 1 ligne par coupe (dans l'ordre coupe_names)
     out_by_name: dict[str, dict] = {n: _default_paroi_row(n) for n in coupe_names if n}
 
     if isinstance(rows_in, list):
@@ -110,70 +103,49 @@ def _write_parois(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-# ------------------------------------------------------
-# UI mapping
-# ------------------------------------------------------
+# ======================================================
+# TRANSFORMATION TABLEAU (INVERSION)
+# ======================================================
+PARAM_LABELS = {
+    "cote_arase_sup": "Cote Arase Sup.",
+    "cote_arase_inf": "Cote Arase Inf.",
+    "cote_fond_fouille_def": "Cote Fond de Fouille def.",
+    "largeur_m_opt": "Largeur (m) opt.",
+}
+
+
 def _parois_rows_to_df(rows: list[dict], coupe_names: list[str]) -> pd.DataFrame:
     rows_norm = _normalize_parois_rows(rows, coupe_names)
-    out = []
-    for r in rows_norm:
-        out.append(
-            {
-                "Coupe": _as_str(r.get("coupe", "")),
-                "Cote Arase Sup.": _as_str(r.get("cote_arase_sup", "")),
-                "Cote Arase Inf.": _as_str(r.get("cote_arase_inf", "")),
-                "Cote Fond de Fouille def.": _as_str(r.get("cote_fond_fouille_def", "")),
-                "Largeur (m) opt.": _as_str(r.get("largeur_m_opt", "")),
-            }
-        )
 
-    df = pd.DataFrame(out)
-    return df.reindex(
-        columns=[
-            "Coupe",
-            "Cote Arase Sup.",
-            "Cote Arase Inf.",
-            "Cote Fond de Fouille def.",
-            "Largeur (m) opt.",
-        ]
-    )
+    data = []
+    for key, label in PARAM_LABELS.items():
+        row = {"Paramètre": label}
+        for r in rows_norm:
+            row[r["coupe"]] = _as_str(r.get(key, ""))
+        data.append(row)
+
+    return pd.DataFrame(data)
 
 
 def _df_to_parois_rows(df: pd.DataFrame, coupe_names: list[str]) -> list[dict]:
-    rows: list[dict] = []
+    rows_out: list[dict] = []
 
-    # Index par coupe pour éviter que l'ordre/filtrage casse tout
-    df_by_name: dict[str, int] = {}
-    if isinstance(df, pd.DataFrame) and "Coupe" in df.columns:
-        for i in range(len(df)):
-            name = "" if pd.isna(df.loc[i, "Coupe"]) else str(df.loc[i, "Coupe"]).strip()
-            if name:
-                df_by_name[name] = i
+    if not isinstance(df, pd.DataFrame) or "Paramètre" not in df.columns:
+        # fallback safe
+        return _normalize_parois_rows([], coupe_names)
 
-    for name in (coupe_names or []):
-        if not name:
-            continue
-        i = df_by_name.get(name, None)
-        if i is None:
-            rows.append(_default_paroi_row(name))
-            continue
+    for coupe in coupe_names:
+        row_dict = _default_paroi_row(coupe)
 
-        cas = "" if pd.isna(df.loc[i, "Cote Arase Sup."]) else str(df.loc[i, "Cote Arase Sup."]).strip()
-        cai = "" if pd.isna(df.loc[i, "Cote Arase Inf."]) else str(df.loc[i, "Cote Arase Inf."]).strip()
-        cff = "" if pd.isna(df.loc[i, "Cote Fond de Fouille def."]) else str(df.loc[i, "Cote Fond de Fouille def."]).strip()
-        larg = "" if pd.isna(df.loc[i, "Largeur (m) opt."]) else str(df.loc[i, "Largeur (m) opt."]).strip()
+        for key, label in PARAM_LABELS.items():
+            match = df[df["Paramètre"] == label]
+            if not match.empty:
+                value = match.iloc[0].get(coupe, "")
+                row_dict[key] = _as_str(value)
 
-        rows.append(
-            {
-                "coupe": name,
-                "cote_arase_sup": cas,
-                "cote_arase_inf": cai,
-                "cote_fond_fouille_def": cff,
-                "largeur_m_opt": larg,
-            }
-        )
+        rows_out.append(row_dict)
 
-    return _normalize_parois_rows(rows, coupe_names)
+    return _normalize_parois_rows(rows_out, coupe_names)
 
 
 # ======================================================
@@ -185,19 +157,17 @@ def render_parametrage_parois(common_data_dir: str | Path, coupes) -> None:
     """
     common_data = Path(common_data_dir)
 
-    coupe_names: list[str] = []
-    for c in (coupes or []):
-        name = str(getattr(c, "name", "") or "").strip()
-        if name:
-            coupe_names.append(name)
+    coupe_names = [
+        str(getattr(c, "name", "") or "").strip()
+        for c in (coupes or [])
+        if str(getattr(c, "name", "") or "").strip()
+    ]
 
     if not coupe_names:
         st.warning("Aucune coupe trouvée.")
-        st.info("(Contenu vide)")
         return
 
-    # JSON source of truth
-    _, payload = _read_parois(common_data, coupe_names)
+    path, payload = _read_parois(common_data, coupe_names)
 
     # cache-busting editor
     rev_key = "parois_editor_rev"
@@ -205,7 +175,6 @@ def render_parametrage_parois(common_data_dir: str | Path, coupes) -> None:
         st.session_state[rev_key] = 0
     editor_key = f"parois_editor_{st.session_state[rev_key]}"
 
-    # Table
     df = _parois_rows_to_df(payload.get("rows", []), coupe_names)
 
     edited = st.data_editor(
@@ -213,19 +182,9 @@ def render_parametrage_parois(common_data_dir: str | Path, coupes) -> None:
         use_container_width=True,
         hide_index=True,
         num_rows="fixed",
-        column_order=[
-            "Coupe",
-            "Cote Arase Sup.",
-            "Cote Arase Inf.",
-            "Cote Fond de Fouille def.",
-            "Largeur (m) opt.",
-        ],
+        column_order=["Paramètre"] + coupe_names,
         column_config={
-            "Coupe": st.column_config.TextColumn("Coupe", disabled=True),
-            "Cote Arase Sup.": st.column_config.TextColumn("Cote Arase Sup."),
-            "Cote Arase Inf.": st.column_config.TextColumn("Cote Arase Inf."),
-            "Cote Fond de Fouille def.": st.column_config.TextColumn("Cote Fond de Fouille def."),
-            "Largeur (m) opt.": st.column_config.TextColumn("Largeur (m) opt."),
+            "Paramètre": st.column_config.TextColumn("Paramètre", disabled=True),
         },
         key=editor_key,
     )
@@ -233,9 +192,8 @@ def render_parametrage_parois(common_data_dir: str | Path, coupes) -> None:
     if st.button("Enregistrer", use_container_width=True, key="parois_save"):
         try:
             rows_out = _df_to_parois_rows(edited, coupe_names)
-            path2, payload2 = _read_parois(common_data, coupe_names)
-            payload2["rows"] = rows_out
-            _write_parois(path2, payload2)
+            payload["rows"] = rows_out
+            _write_parois(path, payload)
 
             st.session_state[rev_key] += 1
             st.success("Enregistré.")

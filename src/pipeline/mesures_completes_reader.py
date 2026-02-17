@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import pandas as pd
 
@@ -40,6 +40,16 @@ def _file_mtime(workbook_path_resolved: str) -> float:
         return Path(workbook_path_resolved).stat().st_mtime
     except Exception:
         return 0.0
+
+
+def _file_mtime_plus_size(workbook_path_resolved: str) -> float:
+    """Cache-buster robuste: combine mtime + size (comme app_core_3d_topo)."""
+    try:
+        p = Path(workbook_path_resolved)
+        stt = p.stat()
+        return float(stt.st_mtime) + float(getattr(stt, "st_size", 0)) * 1e-9
+    except Exception:
+        return _file_mtime(workbook_path_resolved)
 
 
 @dataclass(frozen=True)
@@ -143,32 +153,154 @@ def read_targets_timeseries(
 
     ✅ mtime optionnel : force l’invalidation du cache de lecture du classeur.
     """
-    df = _read_workbook_sheet(workbook_path, sheet_name, mtime)
-    blocks = _infer_target_blocks(df)
-    if not blocks:
+    # ------------------------------------------------------------
+    # FAST PATH: lecture streaming openpyxl (read_only) + colonnes ciblées
+    # → beaucoup plus rapide que pandas.read_excel() sur gros classeur.
+    # ------------------------------------------------------------
+    wp = _resolve_path(workbook_path)
+    mt = float(_file_mtime_plus_size(wp) if mtime is None else mtime)
+    tgt = tuple([str(t).strip() for t in targets if str(t).strip()])
+    if not tgt:
         return {}
 
-    block_by_name = {b.name: b for b in blocks}
+    try:
+        return _read_targets_timeseries_openpyxl_cached(wp, sheet_name, tgt, mt)
+    except Exception:
+        # Fallback conservateur: méthode pandas historique (compat / debug)
+        df = _read_workbook_sheet(workbook_path, sheet_name, mtime)
+        blocks = _infer_target_blocks(df)
+        if not blocks:
+            return {}
 
-    out: Dict[str, pd.DataFrame] = {}
-    for name in targets:
-        b = block_by_name.get(name)
-        if b is None:
+        block_by_name = {b.name: b for b in blocks}
+
+        out: Dict[str, pd.DataFrame] = {}
+        for name in targets:
+            b = block_by_name.get(name)
+            if b is None:
+                continue
+
+            dates = _to_datetime_series(df.iloc[1:, 0])
+            x = pd.to_numeric(df.iloc[1:, b.col_x], errors="coerce")
+            y = pd.to_numeric(df.iloc[1:, b.col_y], errors="coerce")
+            z = pd.to_numeric(df.iloc[1:, b.col_z], errors="coerce")
+
+            d = pd.DataFrame({"date": dates, "x": x, "y": y, "z": z})
+            d = d.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+
+            # On garde les lignes où au moins une coord existe
+            d = d.dropna(subset=["x", "y", "z"], how="all")
+
+            if not d.empty:
+                out[name] = d
+
+        return out
+
+
+# ============================================================
+# FAST openpyxl streaming reader
+# ============================================================
+
+@lru_cache(maxsize=64)
+def _header_triplets_cached(
+    workbook_path_resolved: str,
+    sheet_name: Optional[str],
+    mtime: float,
+) -> Tuple[str, Dict[str, Tuple[int, int, int]]]:
+    """Retourne (sheet_used, {target: (cx,cy,cz)}) en indices 0-based."""
+    import openpyxl
+
+    wb = openpyxl.load_workbook(workbook_path_resolved, data_only=True, read_only=True)
+    if not wb.sheetnames:
+        raise ValueError("Classeur Mesures Completes sans onglets.")
+    sheet_used = sheet_name if (sheet_name and sheet_name in wb.sheetnames) else wb.sheetnames[0]
+    ws = wb[sheet_used]
+
+    row1 = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+
+    triplets: Dict[str, Tuple[int, int, int]] = {}
+    # Structure: col 0 = Date, puis blocs: X,Y,Z; nom en début de bloc
+    for i, v in enumerate(row1):
+        if i == 0:
+            continue
+        if isinstance(v, str) and v.strip():
+            name = v.strip()
+            # blocs de 3 colonnes à partir de i
+            triplets.setdefault(name, (i, i + 1, i + 2))
+
+    return sheet_used, triplets
+
+
+@lru_cache(maxsize=32)
+def _read_targets_timeseries_openpyxl_cached(
+    workbook_path_resolved: str,
+    sheet_name: Optional[str],
+    targets: Tuple[str, ...],
+    mtime: float,
+) -> Dict[str, pd.DataFrame]:
+    import openpyxl
+
+    sheet_used, triplets_all = _header_triplets_cached(workbook_path_resolved, sheet_name, mtime)
+    triplets = {t: triplets_all[t] for t in targets if t in triplets_all}
+    if not triplets:
+        return {}
+
+    wb = openpyxl.load_workbook(workbook_path_resolved, data_only=True, read_only=True)
+    ws = wb[sheet_used]
+
+    # Buffers
+    dates: list = []
+    xs: Dict[str, list] = {t: [] for t in triplets}
+    ys: Dict[str, list] = {t: [] for t in triplets}
+    zs: Dict[str, list] = {t: [] for t in triplets}
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if not row:
+            continue
+        d = row[0] if len(row) >= 1 else None
+        if d is None:
             continue
 
-        dates = _to_datetime_series(df.iloc[1:, 0])
-        x = pd.to_numeric(df.iloc[1:, b.col_x], errors="coerce")
-        y = pd.to_numeric(df.iloc[1:, b.col_y], errors="coerce")
-        z = pd.to_numeric(df.iloc[1:, b.col_z], errors="coerce")
+        # Pour rester compatible pandas: on ajoute une ligne si au moins UNE cible a une coord
+        any_val = False
+        row_vals: Dict[str, Tuple[object, object, object]] = {}
+        for t, (cx, cy, cz) in triplets.items():
+            x = row[cx] if cx < len(row) else None
+            y = row[cy] if cy < len(row) else None
+            z = row[cz] if cz < len(row) else None
+            if x is not None or y is not None or z is not None:
+                any_val = True
+            row_vals[t] = (x, y, z)
 
-        d = pd.DataFrame({"date": dates, "x": x, "y": y, "z": z})
-        d = d.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+        if not any_val:
+            continue
 
-        # On garde les lignes où au moins une coord existe
-        d = d.dropna(subset=["x", "y", "z"], how="all")
+        dates.append(d)
+        for t, (x, y, z) in row_vals.items():
+            xs[t].append(x)
+            ys[t].append(y)
+            zs[t].append(z)
 
-        if not d.empty:
-            out[name] = d
+    if not dates:
+        return {}
+
+    # Conversion date -> datetime (même logique que _to_datetime_series)
+    s_dates = pd.Series(dates)
+    s_dates = _to_datetime_series(s_dates)
+
+    out: Dict[str, pd.DataFrame] = {}
+    for t in targets:
+        if t not in triplets:
+            continue
+        x = pd.to_numeric(pd.Series(xs[t]), errors="coerce")
+        y = pd.to_numeric(pd.Series(ys[t]), errors="coerce")
+        z = pd.to_numeric(pd.Series(zs[t]), errors="coerce")
+
+        ddf = pd.DataFrame({"date": s_dates, "x": x, "y": y, "z": z})
+        ddf = ddf.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+        ddf = ddf.dropna(subset=["x", "y", "z"], how="all")
+        if not ddf.empty:
+            out[t] = ddf
 
     return out
 
