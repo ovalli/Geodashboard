@@ -1,0 +1,69 @@
+{
+  "version": 1,
+  "planchers": {
+    "Plancher 1": {
+      "rows": [
+        {
+          "niveau": "Niveau 1",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 2",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 3",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 4",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 5",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 6",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 7",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 8",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 9",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 10",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 11",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 12",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 13",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 14",
+          "cote": ""
+        },
+        {
+          "niveau": "Niveau 15",
+          "cote": ""
+        }
+      ]
+    }
+  }
+}

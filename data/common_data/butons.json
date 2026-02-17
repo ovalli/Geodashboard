@@ -1,0 +1,253 @@
+{
+  "version": 1,
+  "butons": {
+    "Salut": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        }
+      ]
+    },
+    "Bonjour": {
+      "rows": [
+        {
+          "lit": "Lit 1",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 2",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 3",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 4",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 5",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 6",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 7",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 8",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 9",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 10",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 11",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 12",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 13",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 14",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        },
+        {
+          "lit": "Lit 15",
+          "cote": "",
+          "longueur_m": "",
+          "inclinaison_deg_opt": "",
+          "azimut_deg_opt": "",
+          "dist_milieu_paroi_m_opt": ""
+        }
+      ]
+    }
+  }
+}

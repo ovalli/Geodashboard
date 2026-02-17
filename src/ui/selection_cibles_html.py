@@ -7,7 +7,8 @@ import streamlit.components.v1 as components
 
 _COMPONENT = None
 
-_BASE = Path(tempfile.gettempdir()) / "geodashboard_selection_cibles_component_v7_front"
+# ✅ bump version (anti-cache dur)
+_BASE = Path(tempfile.gettempdir()) / "geodashboard_selection_cibles_component_v19_front"
 
 
 def selection_cibles_component(data: dict, key: str):
@@ -17,12 +18,25 @@ def selection_cibles_component(data: dict, key: str):
 
 def _ensure_component() -> None:
     global _COMPONENT
-    if _COMPONENT is not None:
-        return
-
     _BASE.mkdir(parents=True, exist_ok=True)
-    (_BASE / "index.html").write_text(_index_html(), encoding="utf-8")
-    _COMPONENT = components.declare_component("selection_cibles_component", path=str(_BASE))
+
+    html = _index_html()
+    idx = _BASE / "index.html"
+
+    # ✅ Écrit seulement si différent (évite I/O à chaque run)
+    try:
+        if idx.exists():
+            old = idx.read_text(encoding="utf-8")
+            if old != html:
+                idx.write_text(html, encoding="utf-8")
+        else:
+            idx.write_text(html, encoding="utf-8")
+    except Exception:
+        idx.write_text(html, encoding="utf-8")
+
+    if _COMPONENT is None:
+        # ✅ name changé => Streamlit ne peut PAS réutiliser l’ancien composant
+        _COMPONENT = components.declare_component("selection_cibles_component_v19", path=str(_BASE))
 
 
 def _index_html() -> str:
@@ -35,10 +49,11 @@ def _index_html() -> str:
   html, body { margin:0; padding:0; background:#fff; font-family: system-ui; }
   .root { width: 100%; display:flex; justify-content:center; }
   .panel { width:100%; max-width:1200px; }
-  .topbar { display:flex; align-items:center; justify-content:flex-start; padding:8px 2px 10px 2px; }
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding:8px 2px 10px 2px; gap:10px; }
   .btn { appearance:none; border:0; background:#111827; color:#fff; font-weight:800; font-size:13px;
          padding:10px 12px; border-radius:12px; cursor:pointer; box-shadow:0 10px 20px rgba(0,0,0,.10); }
   .btn:active { transform: translateY(1px); }
+  .ver { font-size:12px; font-weight:800; color:rgba(17,24,39,.55); padding:0 10px; user-select:none; }
 
   .wrap { width:100%; height:680px; position:relative; user-select:none; overflow:hidden; border-radius:14px; }
   svg { width:100%; height:100%; background:#fff; border-radius:14px; touch-action:none; }
@@ -56,6 +71,8 @@ def _index_html() -> str:
           border:1px solid rgba(0,0,0,.10); background:rgba(0,0,0,.03); max-width:100%;
           white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
+  .bgImg { opacity:.92; }
+
   .pt { fill:#eb3838; stroke:rgba(0,0,0,.15); stroke-width:1; }
   .pt.sel { fill: var(--sel-color, #146EFF); }
 
@@ -64,9 +81,10 @@ def _index_html() -> str:
   .zoneLabel { fill: var(--zone-color); font-weight:900; text-anchor:middle; dominant-baseline:middle; pointer-events:none;
                paint-order:stroke fill; stroke:rgba(0,0,0,.92); stroke-width:3px; stroke-linejoin:round; }
 
-  .vecLine { stroke: var(--zone-color); stroke-linecap: round; }
-  .vecHead { fill: var(--zone-color); }
+  .vecLine { stroke: var(--zone-color); stroke-linecap: round; pointer-events:none; }
+  .vecHead { fill: var(--zone-color); pointer-events:none; }
   .vecHandle { fill: rgba(255,255,255,.92); stroke: var(--zone-color); cursor:pointer; }
+  .vecPerp { stroke: var(--zone-color); stroke-linecap: round; opacity:.95; pointer-events:none; }
 
   .vecTools {
     position:absolute;
@@ -94,6 +112,19 @@ def _index_html() -> str:
   .toolBtn:active{ transform:translateY(1px); }
   .toolBtn.locked { background:rgba(17,24,39,.10); border-color:rgba(17,24,39,.20); }
   .toolBtn.delete { background:rgba(235,56,56,.10); border-color:rgba(235,56,56,.22); color:#eb3838; }
+
+  .hint {
+    position:absolute;
+    left:10px; bottom:10px;
+    font-size:11px;
+    color:rgba(17,24,39,.60);
+    background:rgba(255,255,255,.85);
+    border:1px solid rgba(0,0,0,.08);
+    border-radius:12px;
+    padding:6px 9px;
+    user-select:none;
+    pointer-events:none;
+  }
 </style>
 </head>
 
@@ -102,6 +133,7 @@ def _index_html() -> str:
   <div class="panel" id="panel">
     <div class="topbar">
       <button class="btn" id="frontBtn">Mettre à jour</button>
+      <div class="ver" id="ver">FRONT v19 (auto alpha from backend; fallback angle_deg)</div>
     </div>
 
     <div class="wrap" id="wrap">
@@ -122,17 +154,21 @@ def _index_html() -> str:
         </div>
         <div class="list" id="hudList"></div>
       </div>
+
+      <div class="hint">Molette=zoom • Drag=pan • Shift+drag=déplacer fond • Shift+molette=zoom fond</div>
     </div>
   </div>
 </div>
 
 <script>
+// -------- streamlit bridge
 const API=1;
 const post=(type,extra)=>window.parent.postMessage(Object.assign({isStreamlitMessage:true,type,apiVersion:API},extra||{}),"*");
 post("streamlit:componentReady");
 const setH=h=>post("streamlit:setFrameHeight",{height:h});
 const setV=v=>post("streamlit:setComponentValue",{value:v});
 
+// state global page (pan/zoom)
 const STATE = window.__GD_FRONT_STATE__ || (window.__GD_FRONT_STATE__ = {tx:0,ty:0,sc:1,active:null});
 
 addEventListener("message",(e)=>{
@@ -143,6 +179,8 @@ addEventListener("message",(e)=>{
 });
 
 function boot(D){
+  console.log("[GeoDashboard] FRONT v19 loaded");
+
   const W=+D.w||1200, H=+D.h||680;
   document.getElementById("panel").style.maxWidth=W+"px";
   document.getElementById("wrap").style.height=H+"px";
@@ -172,6 +210,16 @@ function boot(D){
   const deg=(r)=>r*180/Math.PI;
   const aTrig=(dx,dy)=>Math.atan2(-dy,dx);
   const signed=(d)=>((d+180)%360+360)%360-180;
+
+  // alpha (deg) -> unit direction (dx,dy) compatible avec alpha_from_vector
+  const dirFromAlpha=(alphaDeg)=>{
+    const rad=(+alphaDeg||0)*Math.PI/180;
+    const ux=Math.cos(rad);
+    const uy=-Math.sin(rad);
+    const nn=Math.sqrt(ux*ux+uy*uy);
+    if(nn<1e-12) return {ux:1,uy:0};
+    return {ux:ux/nn, uy:uy/nn};
+  };
 
   const hex2rgb=(hex)=>{
     let h=String(hex||"").trim().replace("#","");
@@ -214,34 +262,49 @@ function boot(D){
   };
   const quadC=(Q)=>({x:(Q[0].x+Q[1].x+Q[2].x+Q[3].x)/4,y:(Q[0].y+Q[1].y+Q[2].y+Q[3].y)/4});
 
-  const pcaDir=(pts)=>{
-    const n=pts.length; if(n<3)return null;
-    let mx=0,my=0; for(const p of pts){mx+=p.x;my+=p.y;} mx/=n; my/=n;
-    let sxx=0,syy=0,sxy=0;
-    for(const p of pts){const dx=p.x-mx,dy=p.y-my; sxx+=dx*dx; syy+=dy*dy; sxy+=dx*dy;}
-    sxx/=n; syy/=n; sxy/=n;
-    const tr=sxx+syy, det=sxx*syy-sxy*sxy, disc=Math.max(tr*tr-4*det,0);
-    const root=Math.sqrt(disc), l1=0.5*(tr+root);
-    let vx,vy;
-    if(Math.abs(sxy)>1e-12){vx=l1-syy;vy=sxy;} else {vx=(sxx>=syy)?1:0; vy=(sxx>=syy)?0:1;}
-    const vn=n2(vx,vy); if(vn<1e-12)return null;
-    return {vx:vx/vn, vy:vy/vn};
+  const closestOnSeg=(P,A,B)=>{
+    const abx=B.x-A.x, aby=B.y-A.y;
+    const apx=P.x-A.x, apy=P.y-A.y;
+    const ab2=abx*abx+aby*aby;
+    if(ab2<1e-12) return {x:A.x,y:A.y,t:0};
+    let t=(apx*abx+apy*aby)/ab2;
+    t=Math.max(0,Math.min(1,t));
+    return {x:A.x+t*abx, y:A.y+t*aby, t};
   };
 
-  const PTS=pointsIn.map(p=>({name:String(p.name||""),x:+p.px,y:+p.py,z:+p.z,el:null}));
-  for(const p of PTS){
-    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
-    c.setAttribute("class","pt"); c.setAttribute("r","5.8");
-    c.setAttribute("cx",p.x); c.setAttribute("cy",p.y);
-    vp.appendChild(c); p.el=c;
-  }
+  const clampToPoly=(P,poly)=>{
+    if(inPoly(P.x,P.y,poly)) return {x:P.x,y:P.y,clamped:false};
+    let best=null, bestD=1e99;
+    for(let i=0;i<poly.length;i++){
+      const A=poly[i], B=poly[(i+1)%poly.length];
+      const Q=closestOnSeg(P,A,B);
+      const dx=P.x-Q.x, dy=P.y-Q.y;
+      const d=dx*dx+dy*dy;
+      if(d<bestD){ bestD=d; best=Q; }
+    }
+    if(!best) return {x:P.x,y:P.y,clamped:false};
+    return {x:best.x,y:best.y,clamped:true};
+  };
 
-  const defQuad=(i)=> i===0 ? [
-    {x:W*0.28,y:H*0.22},{x:W*0.55,y:H*0.20},{x:W*0.58,y:H*0.55},{x:W*0.31,y:H*0.58},
-  ] : [
-    {x:W*0.55,y:H*0.28},{x:W*0.80,y:H*0.26},{x:W*0.82,y:H*0.62},{x:W*0.57,y:H*0.65},
-  ];
+  const linePolyIntersections=(P, d, poly)=>{
+    const out=[];
+    const eps=1e-9;
+    for(let i=0;i<poly.length;i++){
+      const A=poly[i], B=poly[(i+1)%poly.length];
+      const ex=B.x-A.x, ey=B.y-A.y;
+      const det = d.x*(-ey) - d.y*(-ex);
+      if(Math.abs(det) < eps) continue;
+      const rx=A.x-P.x, ry=A.y-P.y;
+      const t = (rx*(-ey) - ry*(-ex)) / det;
+      const u = (d.x*ry - d.y*rx) / det;
+      if(u >= -1e-6 && u <= 1+1e-6){
+        out.push({t, x:P.x + t*d.x, y:P.y + t*d.y});
+      }
+    }
+    return out;
+  };
 
+  // ✅ localStorage ONLY for quads + vectors (NOT for background transform)
   const Mem={
     p:"geodashboard.front.v1",
     k:(s,n)=>`${Mem.p}.${s}.${n}`,
@@ -250,8 +313,64 @@ function boot(D){
   };
   const scope="selection_cibles";
 
-  const loadVec=(memVec)=>Mem.load(scope, memVec, null);
-  const saveVec=(memVec,v)=>Mem.save(scope, memVec, v);
+  // -----------------------------
+  // Background (backend-only truth)
+  // -----------------------------
+  const bgIn = (D.bg && typeof D.bg==="object") ? D.bg : null;
+  const bgEnabled = !!(bgIn && bgIn.enabled && bgIn.img_url);
+
+  const bgG=document.createElementNS("http://www.w3.org/2000/svg","g");
+  vp.appendChild(bgG);
+
+  let bgX=0, bgY=0, bgS=1;
+  let bgApply=null;
+
+  if(bgEnabled){
+    const img=document.createElementNS("http://www.w3.org/2000/svg","image");
+    img.setAttribute("class","bgImg");
+    img.setAttribute("href", bgIn.img_url);
+
+    const iw = +bgIn.img_w || W;
+    const ih = +bgIn.img_h || H;
+
+    img.setAttribute("x","0");
+    img.setAttribute("y","0");
+    img.setAttribute("width", String(iw));
+    img.setAttribute("height", String(ih));
+    img.setAttribute("preserveAspectRatio","xMidYMid meet");
+    bgG.appendChild(img);
+
+    // ✅ ONLY payload transform (no localStorage)
+    const trPayload = (bgIn.transform && typeof bgIn.transform==="object") ? bgIn.transform : null;
+    const tr = trPayload || {x:0,y:0,scale:1};
+
+    bgX = +tr.x || 0;
+    bgY = +tr.y || 0;
+    bgS = clamp(+tr.scale || 1, 0.02, 50);
+
+    bgApply=()=>bgG.setAttribute("transform",`translate(${bgX} ${bgY}) scale(${bgS})`);
+    bgApply();
+  }
+
+  // -----------------------------
+  // Points
+  // -----------------------------
+  const PTS=pointsIn.map(p=>({name:String(p.name||""),x:+p.px,y:+p.py,z:+p.z,el:null}));
+  for(const p of PTS){
+    const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+    c.setAttribute("class","pt"); c.setAttribute("r","5.8");
+    c.setAttribute("cx",p.x); c.setAttribute("cy",p.y);
+    vp.appendChild(c); p.el=c;
+  }
+
+  // -----------------------------
+  // Zones + vectors
+  // -----------------------------
+  const defQuad=(i)=> i===0 ? [
+    {x:W*0.28,y:H*0.22},{x:W*0.55,y:H*0.20},{x:W*0.58,y:H*0.55},{x:W*0.31,y:H*0.58},
+  ] : [
+    {x:W*0.55,y:H*0.28},{x:W*0.80,y:H*0.26},{x:W*0.82,y:H*0.62},{x:W*0.57,y:H*0.65},
+  ];
 
   const zones=[];
   for(let i=0;i<zonesIn.length;i++){
@@ -264,7 +383,12 @@ function boot(D){
     const memVec=String("vec_"+id);
 
     const quad=Mem.load(scope, memQuad, defQuad(i));
-    const vecState=loadVec(memVec);
+    const vecState=Mem.load(scope, memVec, null);
+
+    // ✅ PRIORITÉ: alpha_backend (Python). Fallback: angle_deg (JSON). Fallback final: 0.0
+    const a1 = (zi.alpha_backend != null && isFinite(+zi.alpha_backend)) ? +zi.alpha_backend : null;
+    const a2 = (zi.angle_deg     != null && isFinite(+zi.angle_deg))     ? +zi.angle_deg     : null;
+    const autoAlpha = (a1 != null) ? a1 : ((a2 != null) ? a2 : 0.0);
 
     const poly=document.createElementNS("http://www.w3.org/2000/svg","polygon");
     poly.setAttribute("class","zonePoly");
@@ -293,6 +417,12 @@ function boot(D){
     vecG.style.display="none";
     vp.appendChild(vecG);
 
+    // perpendicular segment
+    const vPerp=document.createElementNS("http://www.w3.org/2000/svg","line");
+    vPerp.setAttribute("class","vecPerp");
+    vPerp.style.setProperty("--zone-color",zv.color);
+    vecG.appendChild(vPerp);
+
     const vLine=document.createElementNS("http://www.w3.org/2000/svg","line");
     vLine.setAttribute("class","vecLine");
     vLine.style.setProperty("--zone-color",zv.color);
@@ -320,7 +450,9 @@ function boot(D){
     zones.push({
       id,name,idx,color:zv.color,memQuad,quad,
       memVec, vecState,
-      poly,corners,label,vecG,vLine,vHead,h0,h1,
+      autoAlpha,
+      poly,corners,label,vecG,
+      vPerp,vLine,vHead,h0,h1,
       selectedNames:[], selectedPts:[], alphaSigned:null,
       selSig:"",
       dragCorner:null,
@@ -356,37 +488,40 @@ function boot(D){
     z.selSig = z.selectedNames.join("|");
   };
 
-  const computeDefaultVec=(z)=>{
-    if(z.selectedPts.length<3) return null;
-    let base=z.selectedPts[0];
-    for(const p of z.selectedPts){ if(p.z<base.z) base=p; }
-
-    const d=pcaDir(z.selectedPts); if(!d) return null;
-
-    let mx=0,my=0; for(const p of z.selectedPts){mx+=p.x;my+=p.y;} mx/=z.selectedPts.length; my/=z.selectedPts.length;
-
-    let dx=-d.vy, dy=d.vx;
-    if(((mx-base.x)*dx+(my-base.y)*dy)<0){dx=-dx;dy=-dy;}
-    const L=170; const norm=Math.sqrt(dx*dx+dy*dy); if(norm<1e-9) return null;
-    const ux=dx/norm, uy=dy/norm;
-
-    const x0=base.x,y0=base.y, x1=x0+ux*L, y1=y0+uy*L;
-    return {x0,y0,x1,y1};
-  };
-
   const setVecWorld=(z, x0,y0,x1,y1)=>{ z.vx0=x0; z.vy0=y0; z.vx1=x1; z.vy1=y1; };
 
-  const maybeResetCustomOnSelChange=(z, prevSig)=>{
+  const maybeResetCustomOnSelChange=(z)=>{
     const st=z.vecState || null;
     if(!st) return;
     if(!st.custom) return;
     if(st.deleted) return;
-    if(st.locked) return; // ✅ locked => keep frozen
-    if(prevSig === z.selSig) return;
+    if(st.locked) return;
 
-    const next = {locked: !!st.locked, deleted: !!st.deleted, custom:false};
+    const prevStored = (typeof st.selSig==="string") ? st.selSig : "";
+    if(prevStored && prevStored === z.selSig){
+      return;
+    }
+
+    const next = Object.assign({}, st, {custom:false, selSig:z.selSig});
     z.vecState = next;
-    saveVec(z.memVec, next);
+    Mem.save(scope, z.memVec, next);
+  };
+
+  // ✅ AUTO vector = uniquement basé sur alpha (backendAlpha/angle_deg/0)
+  const computeAutoVec=(z)=>{
+    if(z.selectedPts.length<3) return null;
+
+    // base = min Z
+    let base=z.selectedPts[0];
+    for(const p of z.selectedPts){ if(p.z<base.z) base=p; }
+
+    const a = (typeof z.autoAlpha==="number" && isFinite(z.autoAlpha)) ? z.autoAlpha : 0.0;
+    const d = dirFromAlpha(a);
+    const L = 170;
+
+    const x0=base.x, y0=base.y;
+    const x1=x0 + d.ux*L, y1=y0 + d.uy*L;
+    return {x0,y0,x1,y1};
   };
 
   const renderVec=(z)=>{
@@ -403,20 +538,59 @@ function boot(D){
     if(st && st.custom && typeof st.x0==="number"){
       x0=+st.x0; y0=+st.y0; x1=+st.x1; y1=+st.y1;
     } else {
-      const d=computeDefaultVec(z);
+      const d=computeAutoVec(z);
       if(!d){ z.vecG.style.display="none"; z.alphaSigned=null; return; }
       x0=d.x0; y0=d.y0; x1=d.x1; y1=d.y1;
     }
-    setVecWorld(z,x0,y0,x1,y1);
 
+    // base clamp inside zone
+    const cl = clampToPoly({x:x0,y:y0}, z.quad);
+    if(cl.clamped){
+      const dx=x1-x0, dy=y1-y0;
+      x0=cl.x; y0=cl.y;
+      x1=x0+dx; y1=y0+dy;
+      const next=Object.assign({}, z.vecState||{}, {x0,y0,x1,y1, custom:true, deleted:false, selSig:z.selSig});
+      z.vecState=next; Mem.save(scope, z.memVec,next);
+    }
+
+    setVecWorld(z,x0,y0,x1,y1);
     z.vecG.style.display="block";
+
+    // perp segment limited by polygon
+    const dx=x1-x0, dy=y1-y0;
+    const norm=Math.sqrt(dx*dx+dy*dy);
+    if(norm<1e-9){ z.vecG.style.display="none"; z.alphaSigned=null; return; }
+
+    const ux=dx/norm, uy=dy/norm;
+    const px=-uy, py=ux;
+
+    const inter = linePolyIntersections({x:x0,y:y0}, {x:px,y:py}, z.quad);
+    if(inter.length >= 2){
+      let neg=null, pos=null;
+      for(const it of inter){
+        if(it.t < 0){
+          if(!neg || it.t > neg.t) neg=it;
+        } else {
+          if(!pos || it.t < pos.t) pos=it;
+        }
+      }
+      if(!neg || !pos){
+        inter.sort((a,b)=>a.t-b.t);
+        neg=inter[0]; pos=inter[inter.length-1];
+      }
+      z.vPerp.style.display="block";
+      z.vPerp.setAttribute("x1", String(neg.x));
+      z.vPerp.setAttribute("y1", String(neg.y));
+      z.vPerp.setAttribute("x2", String(pos.x));
+      z.vPerp.setAttribute("y2", String(pos.y));
+      z.vPerp.setAttribute("stroke-width",String(3/sc));
+    } else {
+      z.vPerp.style.display="none";
+    }
+
     z.vLine.setAttribute("x1",x0); z.vLine.setAttribute("y1",y0);
     z.vLine.setAttribute("x2",x1); z.vLine.setAttribute("y2",y1);
     z.vLine.setAttribute("stroke-width",String(4/sc));
-
-    const dx=x1-x0, dy=y1-y0;
-    const norm=Math.sqrt(dx*dx+dy*dy); if(norm<1e-9){ z.vecG.style.display="none"; z.alphaSigned=null; return; }
-    const ux=dx/norm, uy=dy/norm;
 
     const headLen=18/sc, headW=11/sc;
     const bx=x1-ux*headLen, by=y1-uy*headLen, nx=-uy, ny=ux;
@@ -448,10 +622,9 @@ function boot(D){
 
   const updateAll=()=>{
     for(const z of zones){
-      const prevSig = z.selSig || "";
       syncGeom(z);
       sel(z);
-      maybeResetCustomOnSelChange(z, prevSig);
+      maybeResetCustomOnSelChange(z);
       renderVec(z);
     }
     recolor();
@@ -465,7 +638,6 @@ function boot(D){
     return Math.sqrt(dx*dx+dy*dy);
   };
 
-  // --- HUD (zone) ---
   const showHandlesFor=(z)=>{
     for(const zz of zones){ zz.h0.style.display="none"; zz.h1.style.display="none"; }
     if(!z) return;
@@ -505,7 +677,6 @@ function boot(D){
     showHandlesFor(z);
   };
 
-  // --- VEC TOOLS stable hover ---
   let hoveredVecZone=null;
   let toolsHover=false;
   let hideTimer=null;
@@ -519,6 +690,18 @@ function boot(D){
       vecTools.style.display="none";
       hoveredVecZone=null;
     }, ms);
+  };
+
+  const pickVectorHover=(cx,cy)=>{
+    const P={x:cx,y:cy};
+    for(const z of zones){
+      const st=z.vecState||{};
+      if(st.deleted) continue;
+      if(z.vx0==null) continue;
+      const a=toClient(z.vx0,z.vy0), b=toClient(z.vx1,z.vy1);
+      if(distSeg(P,a,b)<=14) return z;
+    }
+    return null;
   };
 
   const placeToolsFor=(z)=>{
@@ -559,7 +742,6 @@ function boot(D){
 
   vecTools.onpointerdown=(e)=>{ e.stopPropagation(); };
 
-  // ✅ FIX: when locking, freeze current vector coords as custom
   toolLock.onclick=(e)=>{
     e.preventDefault(); e.stopPropagation();
     if(!hoveredVecZone) return;
@@ -570,23 +752,23 @@ function boot(D){
 
     let next;
     if(nowLocked){
-      // freeze current geometry (even if it came from default)
       if(typeof z.vx0 === "number" && typeof z.vx1 === "number"){
         next = Object.assign({}, st, {
           locked: true,
           deleted: false,
           custom: true,
-          x0: z.vx0, y0: z.vy0, x1: z.vx1, y1: z.vy1
+          x0: z.vx0, y0: z.vy0, x1: z.vx1, y1: z.vy1,
+          selSig: z.selSig
         });
       } else {
-        next = Object.assign({}, st, {locked: true});
+        next = Object.assign({}, st, {locked: true, selSig: z.selSig});
       }
     } else {
-      next = Object.assign({}, st, {locked: false});
+      next = Object.assign({}, st, {locked: false, selSig: z.selSig});
     }
 
     z.vecState = next;
-    saveVec(z.memVec, next);
+    Mem.save(scope, z.memVec, next);
 
     placeToolsFor(z);
     showHandlesFor(hoveredZone);
@@ -596,25 +778,13 @@ function boot(D){
     e.preventDefault(); e.stopPropagation();
     if(!hoveredVecZone) return;
     const st=hoveredVecZone.vecState || {};
-    const next=Object.assign({}, st, {deleted:true});
+    const next=Object.assign({}, st, {deleted:true, selSig: hoveredVecZone.selSig});
     hoveredVecZone.vecState=next;
-    saveVec(hoveredVecZone.memVec, next);
+    Mem.save(scope, hoveredVecZone.memVec, next);
     applyTf();
     hoveredVecZone=null;
     scheduleHide(0);
     if(hoveredZone) showHud(hoveredZone);
-  };
-
-  const pickVectorHover=(cx,cy)=>{
-    const P={x:cx,y:cy};
-    for(const z of zones){
-      const st=z.vecState||{};
-      if(st.deleted) continue;
-      if(z.vx0==null) continue;
-      const a=toClient(z.vx0,z.vy0), b=toClient(z.vx1,z.vy1);
-      if(distSeg(P,a,b)<=14) return z;
-    }
-    return null;
   };
 
   const applyTf=()=>{
@@ -623,6 +793,7 @@ function boot(D){
     if(hoveredVecZone) placeToolsFor(hoveredVecZone);
   };
 
+  // ✅ Front button => send click_id unique (anti-rerun loop côté Python)
   const frontBtn=document.getElementById("frontBtn");
   frontBtn.onclick=()=>{
     const snapshot = zones.map(z=>({
@@ -634,11 +805,17 @@ function boot(D){
       deleted: !!(z.vecState && z.vecState.deleted),
       custom:  !!(z.vecState && z.vecState.custom),
     }));
-    setV({type:"front_button", snapshot});
+
+    // ✅ backend-only truth: we send current bg transform only on update
+    const bg_transform = bgEnabled ? {x:bgX,y:bgY,scale:bgS} : null;
+
+    const click_id = String(Date.now()) + ":" + Math.random().toString(16).slice(2);
+    setV({type:"front_button", click_id, snapshot, bg_transform});
   };
 
   let pan=null;
   let dragVec=null;
+  let dragBg=null;
 
   for(const z of zones){
     for(const c of z.corners){
@@ -675,6 +852,13 @@ function boot(D){
     if(cls && cls.contains("corner")) return;
     if(cls && cls.contains("vecHandle")) return;
 
+    if(bgEnabled && e.shiftKey){
+      svg.setPointerCapture(e.pointerId);
+      const p0=svgPt(e.clientX,e.clientY);
+      dragBg={x:p0.x,y:p0.y,bgX,bgY};
+      return;
+    }
+
     const zVec = pickVectorHover(e.clientX,e.clientY);
     if(zVec){
       const st=zVec.vecState||{};
@@ -692,27 +876,32 @@ function boot(D){
   };
 
   svg.onpointermove=(e)=>{
-    const tgt=e.target;
-    if(tgt && (tgt===vecTools || vecTools.contains(tgt))) return;
-
     cancelHide();
 
+    // corner drag
     for(const z of zones){
       if(z.dragCorner!==null){
         const w=world(e.clientX,e.clientY);
         z.quad[z.dragCorner].x=w.x; z.quad[z.dragCorner].y=w.y;
         Mem.save(scope,z.memQuad,z.quad);
         applyTf();
-
-        showHud(pickZone(e.clientX,e.clientY));
-
         const zVH=pickVectorHover(e.clientX,e.clientY);
-        if(zVH){ hoveredVecZone=zVH; placeToolsFor(zVH); }
-        else { hoveredVecZone=null; scheduleHide(220); }
+        if(zVH){ hoveredVecZone=zVH; placeToolsFor(zVH); showHud(zVH); }
+        else { hoveredVecZone=null; scheduleHide(220); showHud(pickZone(e.clientX,e.clientY)); }
         return;
       }
     }
 
+    // bg drag
+    if(dragBg && bgEnabled){
+      const p=svgPt(e.clientX,e.clientY);
+      bgX = dragBg.bgX + (p.x - dragBg.x);
+      bgY = dragBg.bgY + (p.y - dragBg.y);
+      if(bgApply) bgApply();
+      return;
+    }
+
+    // vector drag
     if(dragVec){
       const z=dragVec.z;
       const w=world(e.clientX,e.clientY);
@@ -720,21 +909,40 @@ function boot(D){
       const dy=w.y-dragVec.start.y;
 
       let x0=dragVec.v0.x, y0=dragVec.v0.y, x1=dragVec.v1.x, y1=dragVec.v1.y;
-      if(dragVec.role==="v0"){ x0=x0+dx; y0=y0+dy; }
-      else if(dragVec.role==="v1"){ x1=x1+dx; y1=y1+dy; }
-      else { x0=x0+dx; y0=y0+dy; x1=x1+dx; y1=y1+dy; }
 
-      const next=Object.assign({}, z.vecState||{}, {x0,y0,x1,y1, custom:true, deleted:false});
+      if(dragVec.role==="v0"){
+        const ndx = (x1-x0), ndy=(y1-y0);
+        let bx = x0+dx, by=y0+dy;
+        const cl = clampToPoly({x:bx,y:by}, z.quad);
+        bx=cl.x; by=cl.y;
+        x0=bx; y0=by;
+        x1=x0+ndx; y1=y0+ndy;
+      }
+      else if(dragVec.role==="v1"){
+        x1=x1+dx; y1=y1+dy;
+      }
+      else {
+        const ndx=(x1-x0), ndy=(y1-y0);
+        let bx=x0+dx, by=y0+dy;
+        const cl = clampToPoly({x:bx,y:by}, z.quad);
+        bx=cl.x; by=cl.y;
+        x0=bx; y0=by;
+        x1=x0+ndx; y1=y0+ndy;
+      }
+
+      const next=Object.assign({}, z.vecState||{}, {x0,y0,x1,y1, custom:true, deleted:false, selSig:z.selSig});
       z.vecState=next;
-      saveVec(z.memVec, next);
+      Mem.save(scope, z.memVec, next);
 
       applyTf();
+
       hoveredVecZone=z;
       placeToolsFor(z);
-      showHud(pickZone(e.clientX,e.clientY));
+      showHud(z);
       return;
     }
 
+    // pan
     if(pan){
       const p=svgPt(e.clientX,e.clientY);
       tx=pan.tx+(p.x-pan.x);
@@ -742,16 +950,24 @@ function boot(D){
       STATE.tx=tx; STATE.ty=ty;
       applyTf();
 
-      showHud(pickZone(e.clientX,e.clientY));
       const zVH=pickVectorHover(e.clientX,e.clientY);
-      if(zVH){ hoveredVecZone=zVH; placeToolsFor(zVH); }
-      else { hoveredVecZone=null; scheduleHide(220); }
+      if(zVH){ hoveredVecZone=zVH; placeToolsFor(zVH); showHud(zVH); }
+      else { hoveredVecZone=null; scheduleHide(220); showHud(pickZone(e.clientX,e.clientY)); }
       return;
     }
 
-    showHud(pickZone(e.clientX,e.clientY));
+    // hover: zone OR vector
+    const zZone = pickZone(e.clientX,e.clientY);
+    const zVH = pickVectorHover(e.clientX,e.clientY);
 
-    const zVH=pickVectorHover(e.clientX,e.clientY);
+    if(zZone){
+      showHud(zZone);
+    } else if(zVH){
+      showHud(zVH);
+    } else {
+      showHud(null);
+    }
+
     if(zVH){
       hoveredVecZone=zVH;
       placeToolsFor(zVH);
@@ -763,15 +979,29 @@ function boot(D){
 
   svg.onpointerup=(e)=>{
     try{svg.releasePointerCapture(e.pointerId);}catch(_){}
-    pan=null;
-    dragVec=null;
+    pan=null; dragVec=null; dragBg=null;
     for(const z of zones){z.dragCorner=null;}
   };
+
+  const ZOOM_STEP_GLOBAL = 1.018;
+  const ZOOM_STEP_BG     = 1.015;
 
   svg.onwheel=(e)=>{
     e.preventDefault();
     const sp=svgPt(e.clientX,e.clientY);
-    const zf=e.deltaY<0?1.08:1/1.08;
+
+    // zoom BG
+    if(bgEnabled && e.shiftKey){
+      const zf=e.deltaY<0?ZOOM_STEP_BG:1/ZOOM_STEP_BG;
+      const ns=clamp(bgS*zf,0.02,50);
+      const bx=(sp.x-bgX)/bgS, by=(sp.y-bgY)/bgS;
+      bgS=ns;
+      bgX=sp.x-bx*bgS; bgY=sp.y-by*bgS;
+      if(bgApply) bgApply();
+      return;
+    }
+
+    const zf=e.deltaY<0?ZOOM_STEP_GLOBAL:1/ZOOM_STEP_GLOBAL;
     const ns=clamp(sc*zf,0.15,25);
     const bx=(sp.x-tx)/sc, by=(sp.y-ty)/sc;
     sc=ns;
@@ -779,10 +1009,9 @@ function boot(D){
     STATE.tx=tx; STATE.ty=ty; STATE.sc=sc;
     applyTf();
 
-    showHud(pickZone(e.clientX,e.clientY));
     const zVH=pickVectorHover(e.clientX,e.clientY);
-    if(zVH){ hoveredVecZone=zVH; placeToolsFor(zVH); }
-    else { hoveredVecZone=null; scheduleHide(220); }
+    if(zVH){ hoveredVecZone=zVH; placeToolsFor(zVH); showHud(zVH); }
+    else { hoveredVecZone=null; scheduleHide(220); showHud(pickZone(e.clientX,e.clientY)); }
   };
 
   svg.onpointerleave=()=>{

@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "rows": [
+    {
+      "coupe": "Salut",
+      "cote_arase_sup": "",
+      "cote_arase_inf": "",
+      "cote_fond_fouille_def": "",
+      "largeur_m_opt": ""
+    },
+    {
+      "coupe": "Bonjour",
+      "cote_arase_sup": "",
+      "cote_arase_inf": "",
+      "cote_fond_fouille_def": "",
+      "largeur_m_opt": ""
+    }
+  ]
+}

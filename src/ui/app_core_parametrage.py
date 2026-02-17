@@ -9,6 +9,9 @@ from src.io.coupes_manager import CoupesManager
 from src.ui.app_core_parametrage_lithologie import render_parametrage_lithologie
 from src.ui.app_core_parametrage_geologie import render_parametrage_geologie
 from src.ui.app_core_parametrage_tirants import render_parametrage_tirants
+from src.ui.app_core_parametrage_butons import render_parametrage_butons
+from src.ui.app_core_parametrage_parois import render_parametrage_parois
+from src.ui.app_core_parametrage_planchers import render_parametrage_planchers  # ✅ AJOUT
 
 
 # ------------------------------------------------------
@@ -138,15 +141,41 @@ def _render_coupe_subtabs_placeholder(section_key: str, coupes) -> None:
 
 
 # ======================================================
+# Butons list builder (basé sur les coupes)
+# ======================================================
+def _build_butons_from_coupes(coupes):
+    from types import SimpleNamespace
+
+    out = []
+    for c in (coupes or []):
+        name = str(getattr(c, "name", "") or "").strip()
+        if not name:
+            continue
+        col = str(getattr(c, "color", "") or "").strip()
+        out.append(SimpleNamespace(name=name, color=col))
+    return out
+
+
+# ======================================================
+# Planchers list builder (simple)
+# ======================================================
+def _build_planchers_default(n: int = 1):
+    """
+    Pas encore de PlanchersManager => on crée une liste stable d'onglets.
+    Par défaut: 1 onglet "Plancher 1".
+    Tu peux monter à 2/3 plus tard si tu veux.
+    """
+    from types import SimpleNamespace
+
+    n = int(n or 1)
+    n = max(1, min(20, n))
+    return [SimpleNamespace(name=f"Plancher {i+1}", color="") for i in range(n)]
+
+
+# ======================================================
 # Public API
 # ======================================================
 def render_parametrage(workbook_path: str | Path | None = None, common_data_dir: str | Path | None = None) -> None:
-    """
-    ✅ JSON-only : workbook_path est désormais optionnel et ignoré.
-    common_data_dir:
-      - si fourni: utilisé tel quel
-      - sinon: <project_root>/data/common_data
-    """
     _ = workbook_path  # compat legacy
     st.subheader("Paramètrage")
 
@@ -173,10 +202,17 @@ def render_parametrage(workbook_path: str | Path | None = None, common_data_dir:
         render_parametrage_tirants(common_data_dir=common_data, coupes=coupes)
 
     with tab_but:
-        _render_coupe_subtabs_placeholder("Butons", coupes)
+        butons = _build_butons_from_coupes(coupes)
+        if not butons:
+            st.warning("Aucun buton trouvé.")
+            st.info("(Contenu vide)")
+        else:
+            render_parametrage_butons(common_data_dir=common_data, butons=butons)
 
     with tab_par:
-        _render_coupe_subtabs_placeholder("Parois", coupes)
+        render_parametrage_parois(common_data_dir=common_data, coupes=coupes)
 
     with tab_pla:
-        _render_coupe_subtabs_placeholder("Planchers", coupes)
+        # ✅ Intégration Planchers (onglets planchers + tableau Niveau/Cote)
+        planchers = _build_planchers_default(n=1)
+        render_parametrage_planchers(common_data_dir=common_data, planchers=planchers)

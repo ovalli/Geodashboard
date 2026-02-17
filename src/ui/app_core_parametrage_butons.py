@@ -1,3 +1,10 @@
+# ======================================================
+# src/ui/app_core_butons.py  (COMPLET)
+# - Même logique que tirants (JSON source of truth + onglets + data_editor + IA)
+# - Onglets = "Buton 1", "Buton 2", etc (venant de `butons`)
+# - Table: Lit | Cote | Longueur (m) | Inclinaison (°) opt. | Azimut (°) opt. | Distance milieu paroi (m) opt.
+# ======================================================
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -46,12 +53,20 @@ _COLOR_TO_EMOJI = {
     "#EC4899": "🩷",
 }
 
-_TIR_FILENAME_PRIMARY = "Tirants.json"
-_TIR_FILENAME_FALLBACK = "tirants.json"
+
+# ------------------------------------------------------
+# Fichiers / contraintes upload
+# ------------------------------------------------------
+_BUT_FILENAME_PRIMARY = "Butons.json"
+_BUT_FILENAME_FALLBACK = "butons.json"
 
 _MAX_UPLOAD_BYTES = 3 * 1024 * 1024  # 3 Mo
 _ALLOWED_MIME = {"application/pdf", "image/png", "image/jpeg"}
 
+
+# ------------------------------------------------------
+# Lits
+# ------------------------------------------------------
 _N_LITS = 15
 _LIT_NUM_RE = re.compile(r"(\d+)")
 
@@ -111,25 +126,24 @@ def _extract_json_object(text: str) -> dict:
 
 
 # ======================================================
-# Tirants.json
+# Butons.json
 # ======================================================
-def _find_tirants_json(common_data_dir: Path) -> Path:
-    p1 = common_data_dir / _TIR_FILENAME_PRIMARY
+def _find_butons_json(common_data_dir: Path) -> Path:
+    p1 = common_data_dir / _BUT_FILENAME_PRIMARY
     if p1.exists():
         return p1
-    return common_data_dir / _TIR_FILENAME_FALLBACK
+    return common_data_dir / _BUT_FILENAME_FALLBACK
 
 
-def _default_tir_rows() -> list[dict]:
+def _default_buton_rows() -> list[dict]:
     return [
         {
             "lit": f"Lit {i+1}",
             "cote": "",
-            "l_libre_m": "",
-            "l_ancree_m": "",
-            "inclinaison_deg": "",
-            "azimut_deg": "",
-            "esp_opt_m": "",
+            "longueur_m": "",
+            "inclinaison_deg_opt": "",
+            "azimut_deg_opt": "",
+            "dist_milieu_paroi_m_opt": "",
         }
         for i in range(_N_LITS)
     ]
@@ -162,8 +176,8 @@ def _as_str(v: Any) -> str:
     return s
 
 
-def _normalize_tir_rows(rows_in: Any) -> list[dict]:
-    out = _default_tir_rows()
+def _normalize_buton_rows(rows_in: Any) -> list[dict]:
+    out = _default_buton_rows()
 
     if not isinstance(rows_in, list) or not rows_in:
         return out
@@ -193,21 +207,20 @@ def _normalize_tir_rows(rows_in: Any) -> list[dict]:
         out[i] = {
             "lit": lit,
             "cote": _as_str(src.get("cote", "")),
-            "l_libre_m": _as_str(src.get("l_libre_m", "")),
-            "l_ancree_m": _as_str(src.get("l_ancree_m", "")),
-            "inclinaison_deg": _as_str(src.get("inclinaison_deg", "")),
-            "azimut_deg": _as_str(src.get("azimut_deg", "")),
-            "esp_opt_m": _as_str(src.get("esp_opt_m", "")),
+            "longueur_m": _as_str(src.get("longueur_m", "")),
+            "inclinaison_deg_opt": _as_str(src.get("inclinaison_deg_opt", "")),
+            "azimut_deg_opt": _as_str(src.get("azimut_deg_opt", "")),
+            "dist_milieu_paroi_m_opt": _as_str(src.get("dist_milieu_paroi_m_opt", "")),
         }
 
     return out
 
 
-def _read_tirants(common_data_dir: Path, coupe_names: list[str]) -> tuple[Path, dict]:
-    path = _find_tirants_json(common_data_dir)
+def _read_butons(common_data_dir: Path, buton_names: list[str]) -> tuple[Path, dict]:
+    path = _find_butons_json(common_data_dir)
 
     if not path.exists():
-        payload = {"version": 1, "coupes": {n: {"rows": _default_tir_rows()} for n in coupe_names if n}}
+        payload = {"version": 1, "butons": {n: {"rows": _default_buton_rows()} for n in buton_names if n}}
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return path, payload
@@ -220,32 +233,32 @@ def _read_tirants(common_data_dir: Path, coupe_names: list[str]) -> tuple[Path, 
         payload = {}
 
     payload.setdefault("version", 1)
-    if "coupes" not in payload or not isinstance(payload.get("coupes"), dict):
-        payload["coupes"] = {}
+    if "butons" not in payload or not isinstance(payload.get("butons"), dict):
+        payload["butons"] = {}
 
-    for n in coupe_names:
+    for n in buton_names:
         if not n:
             continue
-        if n not in payload["coupes"]:
-            payload["coupes"][n] = {"rows": _default_tir_rows()}
+        if n not in payload["butons"]:
+            payload["butons"][n] = {"rows": _default_buton_rows()}
         else:
-            payload["coupes"][n]["rows"] = _normalize_tir_rows(payload["coupes"][n].get("rows"))
+            payload["butons"][n]["rows"] = _normalize_buton_rows(payload["butons"][n].get("rows"))
 
     return path, payload
 
 
-def _write_tirants(path: Path, payload: dict) -> None:
+def _write_butons(path: Path, payload: dict) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 # ======================================================
-# IA : remplir tirants pour une coupe
+# IA : remplir butons pour un buton
 # ======================================================
-def _ai_complete_tirants_for_coupe(
+def _ai_complete_butons_for_buton(
     file_bytes: bytes,
     filename: str,
     mime_type: str,
-    coupe_name: str,
+    buton_name: str,
     current_rows: list[dict],
     model: str = "gpt-4.1",
 ) -> list[dict]:
@@ -256,59 +269,44 @@ def _ai_complete_tirants_for_coupe(
     client = OpenAI(api_key=api_key)
 
     instruction = f"""
-Tu reçois un document (PDF ou image) lié à un chantier et potentiellement à la coupe : {coupe_name}.
+Tu reçois un document (PDF ou image) lié à un chantier et potentiellement aux BUTONS : {buton_name}.
 Ce document peut être un PLAN, une COUPE, un détail, une note, un tableau, ou un mélange.
 
 Objectif:
-- Extraire TOUT ce qui est possible et COHÉRENT sur les TIRANTS, et remplir Lit 1..Lit {_N_LITS}.
+- Extraire TOUT ce qui est possible et COHÉRENT sur les BUTONS, et remplir Lit 1..Lit {_N_LITS}.
 - Si un tableau existe : utilise-le en priorité.
-- Si aucun tableau n’existe : lis le plan lui-même (annotations près des tirants, repères T1/T2…, flèches, textes, légendes, chaînes de cote).
-- Si une info est indiquée "voir vue en plan" / "voir coupe" : essaie de la retrouver ailleurs dans le document.
+- Sinon : lis le plan/coupe (annotations, repères, flèches, légendes, chaînes de cote).
 
 Champs attendus (par lit):
 - cote : altitude / niveau (ex: +132.50)
-- l_libre_m : longueur libre (m)
-- l_ancree_m : longueur ancrée (m)
-- inclinaison_deg : inclinaison (°)
-- azimut_deg : azimut (°) opt.
-- esp_opt_m : espacement optimal (m) opt.
+- longueur_m : longueur (m)
+- inclinaison_deg_opt : inclinaison (°) opt.
+- azimut_deg_opt : azimut (°) opt.
+- dist_milieu_paroi_m_opt : distance milieu paroi (m) opt.
 
-Règles UNITÉS (important):
-- Longueurs peuvent être en m, cm, mm.
-  - Si tu vois 15000 mm => 15.0 m
-  - Si tu vois 1500 cm => 15.0 m
-  - Si tu vois 15 m => 15.0 m
-- Ne confonds jamais avec des cotes planimétriques, dimensions de paroi, échelles graphiques, repères (ex: 90.00 peut être une cote/chaîne de cote, pas une longueur de tirant).
+Règles UNITÉS:
+- Longueurs/distance peuvent être en m, cm, mm.
+  - 15000 mm => 15.0 m
+  - 1500 cm => 15.0 m
+  - 15 m => 15.0 m
 
-Règles COHÉRENCE (anti-erreurs d'ordre de grandeur):
-- Un tirant de chantier a typiquement des longueurs de l’ordre de quelques mètres à quelques dizaines de mètres.
-- Si tu extrais une longueur > 40 m (libre ou ancrée), considère que c’est PROBABLEMENT une mauvaise lecture.
-  => Dans ce cas, REVIENS sur le document et cherche une valeur alternative plus plausible (souvent 12–25 m), ou laisse "" si tu n’as rien de fiable.
-- Si l_libre_m + l_ancree_m est aberrant (ex: ~90 m) alors que le contexte montre des tirants courts, c’est un signal d’erreur: relecture obligatoire.
-
-Stratégie de lecture:
-1) Cherche un bloc "Tableau tirants", "tirants provisoires", "ancrages", ou similaire.
-2) Sinon, repère les tirants sur le plan/coupe (symboles/traits obliques) et lis les annotations proches:
-   - L libre, L ancrée, longueur totale, inclinaison, azimut, altitude, entraxe/espacement
-3) Si plusieurs valeurs possibles existent, choisis celle:
-   - explicitement associée aux tirants (mots-clés: tirant, ancrage, L libre, L ancrée, inclinaison, azimut, entraxe, espacement)
-   - la plus cohérente (pas d’ordre de grandeur absurde)
+Cohérence:
+- Si tu n'es pas sûr => "" (vide).
+- Ne confonds pas avec des cotes planimétriques ou dimensions non liées.
 
 Sortie:
 - Retourne EXACTEMENT Lit 1..Lit {_N_LITS}.
-- Si une valeur n’est pas trouvable ou pas fiable => "".
-- Ne crée pas d'autres lits.
 - Réponds UNIQUEMENT avec un JSON valide au format STRICT:
 
 {{
   "rows": [
-    {{"lit":"Lit 1","cote":"","l_libre_m":"","l_ancree_m":"","inclinaison_deg":"","azimut_deg":"","esp_opt_m":""}},
+    {{"lit":"Lit 1","cote":"","longueur_m":"","inclinaison_deg_opt":"","azimut_deg_opt":"","dist_milieu_paroi_m_opt":""}},
     ...
-    {{"lit":"Lit {_N_LITS}","cote":"","l_libre_m":"","l_ancree_m":"","inclinaison_deg":"","azimut_deg":"","esp_opt_m":""}}
+    {{"lit":"Lit {_N_LITS}","cote":"","longueur_m":"","inclinaison_deg_opt":"","azimut_deg_opt":"","dist_milieu_paroi_m_opt":""}}
   ]
 }}
 
-Valeurs actuelles (à utiliser comme fallback si le document est partiel) :
+Valeurs actuelles (fallback si document partiel) :
 {json.dumps(current_rows, ensure_ascii=False, indent=2)}
 """.strip()
 
@@ -332,14 +330,14 @@ Valeurs actuelles (à utiliser comme fallback si le document est partiel) :
     resp = client.responses.create(model=model, input=[{"role": "user", "content": content}])
     out_text = _resp_text(resp)
     obj = _extract_json_object(out_text)
-    return _normalize_tir_rows(obj.get("rows"))
+    return _normalize_buton_rows(obj.get("rows"))
 
 
 # ======================================================
 # UI mapping
 # ======================================================
-def _tir_rows_to_df(rows: list[dict]) -> pd.DataFrame:
-    rows_norm = _normalize_tir_rows(rows)
+def _buton_rows_to_df(rows: list[dict]) -> pd.DataFrame:
+    rows_norm = _normalize_buton_rows(rows)
     out = []
     for i in range(_N_LITS):
         lit = f"Lit {i+1}"
@@ -348,88 +346,90 @@ def _tir_rows_to_df(rows: list[dict]) -> pd.DataFrame:
             {
                 "Lit": lit,
                 "Cote": "" if src.get("cote") is None else str(src.get("cote", "")),
-                "L libre (m)": "" if src.get("l_libre_m") is None else str(src.get("l_libre_m", "")),
-                "L ancrée (m)": "" if src.get("l_ancree_m") is None else str(src.get("l_ancree_m", "")),
-                "Inclinaison (°)": "" if src.get("inclinaison_deg") is None else str(src.get("inclinaison_deg", "")),
-                "Azimut (°) opt.": "" if src.get("azimut_deg") is None else str(src.get("azimut_deg", "")),
-                "Esp. (m) opt.": "" if src.get("esp_opt_m") is None else str(src.get("esp_opt_m", "")),
+                "Longueur (m)": "" if src.get("longueur_m") is None else str(src.get("longueur_m", "")),
+                "Inclinaison (°) opt.": "" if src.get("inclinaison_deg_opt") is None else str(src.get("inclinaison_deg_opt", "")),
+                "Azimut (°) opt.": "" if src.get("azimut_deg_opt") is None else str(src.get("azimut_deg_opt", "")),
+                "Distance milieu paroi (m) opt.": ""
+                if src.get("dist_milieu_paroi_m_opt") is None
+                else str(src.get("dist_milieu_paroi_m_opt", "")),
             }
         )
 
     df = pd.DataFrame(out)
 
-    # ✅ Force l'existence + l'ordre des colonnes (sinon Streamlit peut cacher)
+    # Force existence + ordre (sinon Streamlit peut “perdre” une colonne)
     return df.reindex(
         columns=[
             "Lit",
             "Cote",
-            "L libre (m)",
-            "L ancrée (m)",
-            "Inclinaison (°)",
+            "Longueur (m)",
+            "Inclinaison (°) opt.",
             "Azimut (°) opt.",
-            "Esp. (m) opt.",
+            "Distance milieu paroi (m) opt.",
         ]
     )
 
 
-def _df_to_tir_rows(df: pd.DataFrame) -> list[dict]:
+def _df_to_buton_rows(df: pd.DataFrame) -> list[dict]:
     rows: list[dict] = []
     for i in range(_N_LITS):
         lit = f"Lit {i+1}"
         if i < len(df):
             cote = "" if pd.isna(df.loc[i, "Cote"]) else str(df.loc[i, "Cote"]).strip()
-            ll = "" if pd.isna(df.loc[i, "L libre (m)"]) else str(df.loc[i, "L libre (m)"]).strip()
-            la = "" if pd.isna(df.loc[i, "L ancrée (m)"]) else str(df.loc[i, "L ancrée (m)"]).strip()
-            inc = "" if pd.isna(df.loc[i, "Inclinaison (°)"]) else str(df.loc[i, "Inclinaison (°)"]).strip()
-
-            azi_col = "Azimut (°) opt."
-            esp_col = "Esp. (m) opt."
-
-            azi = "" if (azi_col not in df.columns or pd.isna(df.loc[i, azi_col])) else str(df.loc[i, azi_col]).strip()
-            esp = "" if (esp_col not in df.columns or pd.isna(df.loc[i, esp_col])) else str(df.loc[i, esp_col]).strip()
+            lg = "" if pd.isna(df.loc[i, "Longueur (m)"]) else str(df.loc[i, "Longueur (m)"]).strip()
+            inc = "" if pd.isna(df.loc[i, "Inclinaison (°) opt."]) else str(df.loc[i, "Inclinaison (°) opt."]).strip()
+            azi = "" if pd.isna(df.loc[i, "Azimut (°) opt."]) else str(df.loc[i, "Azimut (°) opt."]).strip()
+            dist = (
+                ""
+                if pd.isna(df.loc[i, "Distance milieu paroi (m) opt."])
+                else str(df.loc[i, "Distance milieu paroi (m) opt."]).strip()
+            )
         else:
-            cote = ll = la = inc = azi = esp = ""
+            cote = lg = inc = azi = dist = ""
 
         rows.append(
             {
                 "lit": lit,
                 "cote": cote,
-                "l_libre_m": ll,
-                "l_ancree_m": la,
-                "inclinaison_deg": inc,
-                "azimut_deg": azi,
-                "esp_opt_m": esp,
+                "longueur_m": lg,
+                "inclinaison_deg_opt": inc,
+                "azimut_deg_opt": azi,
+                "dist_milieu_paroi_m_opt": dist,
             }
         )
-    return _normalize_tir_rows(rows)
+    return _normalize_buton_rows(rows)
 
 
 # ======================================================
 # Public entry
 # ======================================================
-def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
+def render_parametrage_butons(common_data_dir: str | Path, butons) -> None:
+    """
+    butons: liste d'objets avec attributs .name et éventuellement .color
+    Ex: buton.name = "Buton 1", "Buton 2", etc.
+    """
     common_data = Path(common_data_dir)
 
-    # Sous-onglets coupes
+    # Sous-onglets butons
     display_to_name: dict[str, str] = {}
     display_options: list[str] = []
-    for i, c in enumerate(coupes or []):
-        name = str(getattr(c, "name", "") or "").strip()
+    for i, b in enumerate(butons or []):
+        name = str(getattr(b, "name", "") or "").strip()
         if not name:
             continue
-        col = str(getattr(c, "color", "") or "").strip()
+        col = str(getattr(b, "color", "") or "").strip()
         disp = f"{_emoji_from_color(col, i)} {name}"
         display_to_name[disp] = name
         display_options.append(disp)
 
     if not display_options:
-        st.warning("Aucune coupe trouvée.")
+        st.warning("Aucun buton trouvé.")
         st.info("(Contenu vide)")
         return
 
-    coupe_names = list(display_to_name.values())
+    buton_names = list(display_to_name.values())
 
-    ss_key = "param_tirants_selected_coupe"
+    ss_key = "param_butons_selected_buton"
     if ss_key not in st.session_state:
         st.session_state[ss_key] = display_to_name[display_options[0]]
 
@@ -441,19 +441,19 @@ def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
         options=display_options,
         icons=[""] * len(display_options),
         orientation="horizontal",
-        key="param_tirants_coupes_tabs",
+        key="param_butons_tabs",
         default_index=display_options.index(default_disp) if default_disp in display_options else 0,
         styles=_OPT_MENU_STYLES,
     )
 
-    coupe_name = display_to_name.get(selected_disp, display_to_name[display_options[0]])
-    st.session_state[ss_key] = coupe_name
+    buton_name = display_to_name.get(selected_disp, display_to_name[display_options[0]])
+    st.session_state[ss_key] = buton_name
 
     # JSON source of truth
-    _, tir_payload = _read_tirants(common_data, coupe_names)
+    _, but_payload = _read_butons(common_data, buton_names)
 
     # cache-busting data_editor
-    rev_key = f"tir_editor_rev_{coupe_name}"
+    rev_key = f"but_editor_rev_{buton_name}"
     if rev_key not in st.session_state:
         st.session_state[rev_key] = 0
 
@@ -465,7 +465,7 @@ def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
         uploaded = st.file_uploader(
             "Document",
             type=["pdf", "png", "jpg", "jpeg"],
-            key=f"tir_uploader_{coupe_name}",
+            key=f"but_uploader_{buton_name}",
             label_visibility="collapsed",
         )
 
@@ -491,15 +491,14 @@ def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
             file_ok = False
             st.error("Type non supporté. Autorisés: PDF, PNG, JPEG.")
 
-    # ✅ cache-busting fiable
-    editor_key = f"tir_editor_{coupe_name}_{st.session_state[rev_key]}"
+    editor_key = f"but_editor_{buton_name}_{st.session_state[rev_key]}"
 
     with c2:
         if st.button(
             "Remplissage Automatique IA",
             use_container_width=True,
             disabled=(uploaded is None) or (not file_ok),
-            key=f"tir_ai_btn_{coupe_name}",
+            key=f"but_ai_btn_{buton_name}",
         ):
             if uploaded is None or not file_ok:
                 st.stop()
@@ -509,22 +508,22 @@ def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
                 st.error("Fichier trop gros : limite 3 Mo.")
                 st.stop()
 
-            tir_path2, tir_payload2 = _read_tirants(common_data, coupe_names)
-            current_rows = tir_payload2["coupes"][coupe_name]["rows"]
+            but_path2, but_payload2 = _read_butons(common_data, buton_names)
+            current_rows = but_payload2["butons"][buton_name]["rows"]
 
             try:
                 with st.spinner("Analyse…"):
-                    new_rows = _ai_complete_tirants_for_coupe(
+                    new_rows = _ai_complete_butons_for_buton(
                         file_bytes=file_bytes,
                         filename=uploaded.name or "document",
                         mime_type=mime_type or (uploaded.type or ""),
-                        coupe_name=coupe_name,
+                        buton_name=buton_name,
                         current_rows=current_rows,
                         model="gpt-4.1",
                     )
 
-                tir_payload2["coupes"][coupe_name]["rows"] = new_rows
-                _write_tirants(tir_path2, tir_payload2)
+                but_payload2["butons"][buton_name]["rows"] = new_rows
+                _write_butons(but_path2, but_payload2)
 
                 st.session_state[rev_key] += 1
                 st.success("Fait.")
@@ -536,8 +535,8 @@ def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
     st.divider()
 
     # Tableur
-    current_rows = tir_payload["coupes"][coupe_name]["rows"]
-    df = _tir_rows_to_df(current_rows)
+    current_rows = but_payload["butons"][buton_name]["rows"]
+    df = _buton_rows_to_df(current_rows)
 
     edited = st.data_editor(
         df,
@@ -547,31 +546,29 @@ def render_parametrage_tirants(common_data_dir: str | Path, coupes) -> None:
         column_order=[
             "Lit",
             "Cote",
-            "L libre (m)",
-            "L ancrée (m)",
-            "Inclinaison (°)",
+            "Longueur (m)",
+            "Inclinaison (°) opt.",
             "Azimut (°) opt.",
-            "Esp. (m) opt.",
+            "Distance milieu paroi (m) opt.",
         ],
         column_config={
             "Lit": st.column_config.TextColumn("Lit", disabled=True),
             "Cote": st.column_config.TextColumn("Cote"),
-            "L libre (m)": st.column_config.TextColumn("L libre (m)"),
-            "L ancrée (m)": st.column_config.TextColumn("L ancrée (m)"),
-            "Inclinaison (°)": st.column_config.TextColumn("Inclinaison (°)"),
+            "Longueur (m)": st.column_config.TextColumn("Longueur (m)"),
+            "Inclinaison (°) opt.": st.column_config.TextColumn("Inclinaison (°) opt."),
             "Azimut (°) opt.": st.column_config.TextColumn("Azimut (°) opt."),
-            "Esp. (m) opt.": st.column_config.TextColumn("Esp. (m) opt."),
+            "Distance milieu paroi (m) opt.": st.column_config.TextColumn("Distance milieu paroi (m) opt."),
         },
         key=editor_key,
     )
 
-    if st.button("Enregistrer", use_container_width=True, key=f"tir_save_{coupe_name}"):
+    if st.button("Enregistrer", use_container_width=True, key=f"but_save_{buton_name}"):
         try:
-            rows_out = _df_to_tir_rows(edited)
+            rows_out = _df_to_buton_rows(edited)
 
-            tir_path3, tir_payload3 = _read_tirants(common_data, coupe_names)
-            tir_payload3["coupes"][coupe_name]["rows"] = rows_out
-            _write_tirants(tir_path3, tir_payload3)
+            but_path3, but_payload3 = _read_butons(common_data, buton_names)
+            but_payload3["butons"][buton_name]["rows"] = rows_out
+            _write_butons(but_path3, but_payload3)
 
             st.session_state[rev_key] += 1
             st.success("Enregistré.")

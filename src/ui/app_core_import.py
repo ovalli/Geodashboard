@@ -10,6 +10,7 @@ import streamlit as st
 from src.io.import_utils import (
     build_topo_target,
     build_inclino_target,
+    build_fond_plan_target,  # ✅ AJOUT
     replace_file_bytes,
 )
 
@@ -61,20 +62,11 @@ def _try_get_last_modified(uploaded) -> datetime | None:
 
 
 def _content_signature(content: bytes) -> str:
-    # sha1 suffit ici (signature courte). Si tu préfères, passe en sha256.
     return hashlib.sha1(content).hexdigest()
 
 
 # ======================================================
 # Cache keys (ciblées par "dataset")
-# Objectif: invalider UNIQUEMENT ce qui dépend du fichier importé,
-# sans toucher aux caches des autres datasets.
-#
-# 👉 Principe:
-# - on stocke une signature "content hash" par kind (topo / inclino / ...)
-# - tout loader @st.cache_data doit prendre ce hash en param
-#   (ex: load_topo_df(path, content_hash=st.session_state["data_hash"]["topo"])
-#  => quand on importe un nouveau fichier, content_hash change => cache saute, ciblé.
 # ======================================================
 def _ensure_cache_state() -> None:
     if "data_hash" not in st.session_state or not isinstance(st.session_state.get("data_hash"), dict):
@@ -84,12 +76,6 @@ def _ensure_cache_state() -> None:
 
 
 def set_dataset_signature(kind: str, sig: str) -> None:
-    """
-    Stocke la signature du contenu pour invalider le cache de CE dataset uniquement.
-
-    NOTE: Il faut que les fonctions @st.cache_data utilisent ce param:
-      load_xxx(..., content_hash=st.session_state["data_hash"].get(kind,""))
-    """
     _ensure_cache_state()
     st.session_state["data_hash"][kind] = sig
     st.session_state["data_rev"][kind] = int(st.session_state["data_rev"].get(kind, 0)) + 1
@@ -101,50 +87,28 @@ def get_dataset_signature(kind: str) -> str:
 
 
 def _targeted_python_cache_clear(kind: str) -> None:
-    """
-    IMPORTANT:
-    - Streamlit ne permet pas de "clear" une entrée précise de st.cache_data.
-      Donc on NE fait PAS st.cache_data.clear() ici (trop global).
-    - Par contre, si certains modules utilisent functools.lru_cache côté Python,
-      on peut (optionnellement) les purger ciblé / ou au moins réduire les effets.
-    Ici on tente juste quelques clear "safe" sans casser si absent.
-    """
-    # Exemple : si tu as des readers avec lru_cache par dataset.
-    # On garde en try/except : s'il n'existe pas, on ne fait rien.
+    # Optional: purge de caches Python (lru_cache) si tu en as.
     try:
         if kind == "topo":
-            # from src.pipeline.topo_reader import _read_cached  # si tu as un module dédié
-            # _read_cached.cache_clear()
             pass
     except Exception:
         pass
 
     try:
         if kind == "inclino":
-            # from src.pipeline.inclino_reader import _read_cached
-            # _read_cached.cache_clear()
             pass
     except Exception:
         pass
 
-    # Si tu utilises mesures_completes_reader et que tu importes ce fichier ici un jour :
-    # try:
-    #     from src.pipeline import mesures_completes_reader as mcr
-    #     mcr._read_workbook_sheet_cached.cache_clear()
-    #     mcr._list_targets_cached.cache_clear()
-    # except Exception:
-    #     pass
+    try:
+        if kind == "fond_plan":
+            pass
+    except Exception:
+        pass
 
 
 # ======================================================
-# Validation (STRICT + robuste)
-# Critères demandés :
-# - dates en col 1
-# - une seule feuille
-# - cibles en ligne 1
-#
-# + On vérifie un minimum de cohérence "triplets" (2,5,8,...)
-# + On refuse si aucun triplet XYZ numérique n'est trouvé (scan plus long)
+# Validation Excel (STRICT + robuste)
 # ======================================================
 def _parse_date_str(s: str) -> datetime | None:
     s = (s or "").strip()
@@ -159,7 +123,6 @@ def _parse_date_str(s: str) -> datetime | None:
 
 
 def _is_date_cell(v) -> bool:
-    # strict : on n’accepte pas les nombres bruts en dates (trop permissif)
     if v is None:
         return False
     if isinstance(v, datetime):
@@ -274,7 +237,7 @@ def _validate_uploaded_xlsx_strict(content: bytes) -> tuple[bool, str]:
         if not _is_date_cell(d0):
             continue
 
-        for c in target_cols[: min(len(target_cols), 24)]:  # limiter pour perf
+        for c in target_cols[: min(len(target_cols), 24)]:
             x = row[c - 1] if (c - 1) < len(row) else None
             y = row[c] if c < len(row) else None
             z = row[c + 1] if (c + 1) < len(row) else None
@@ -292,9 +255,23 @@ def _validate_uploaded_xlsx_strict(content: bytes) -> tuple[bool, str]:
 
 
 # ======================================================
+# Validation PDF (simple mais robuste)
+# ======================================================
+def _validate_uploaded_pdf(content: bytes) -> tuple[bool, str]:
+    if not content or len(content) < 8:
+        return False, "PDF vide ou trop petit."
+    if not content.startswith(b"%PDF-"):
+        return False, "Signature PDF invalide (le fichier ne commence pas par %PDF-)."
+    # Optionnel : limiter taille si tu veux éviter des énormes fichiers
+    # if len(content) > 60 * 1024 * 1024:
+    #     return False, "PDF trop volumineux (max 60 Mo)."
+    return True, "OK"
+
+
+# ======================================================
 # Import (auto replace) + invalidation ciblée (par kind)
 # ======================================================
-def _auto_replace_on_upload(kind: str, dest_path: Path, uploaded) -> None:
+def _auto_replace_on_upload_xlsx(kind: str, dest_path: Path, uploaded) -> None:
     if uploaded is None:
         return
 
@@ -319,6 +296,38 @@ def _auto_replace_on_upload(kind: str, dest_path: Path, uploaded) -> None:
         st.error(f"❌ Fichier refusé : {reason}")
         return
 
+    _do_replace_and_invalidate(kind, dest_path, content)
+
+
+def _auto_replace_on_upload_pdf(kind: str, dest_path: Path, uploaded) -> None:
+    if uploaded is None:
+        return
+
+    try:
+        content = uploaded.getvalue()
+    except Exception as e:
+        st.error("❌ Impossible de lire le fichier uploadé.")
+        st.exception(e)
+        return
+
+    last_mod = _try_get_last_modified(uploaded)
+    st.markdown(
+        f"""
+- **Fichier :** `{uploaded.name}`
+- **Poids :** {_fmt_bytes(getattr(uploaded, "size", len(content)))}
+- **Dernière modification :** {_fmt_dt(last_mod)}
+""".strip()
+    )
+
+    ok, reason = _validate_uploaded_pdf(content)
+    if not ok:
+        st.error(f"❌ Fichier refusé : {reason}")
+        return
+
+    _do_replace_and_invalidate(kind, dest_path, content)
+
+
+def _do_replace_and_invalidate(kind: str, dest_path: Path, content: bytes) -> None:
     sig = _content_signature(content)
     sig_key = f"import::{kind}::last_sig"
     up_key = f"import::{kind}::uploaded_at"
@@ -340,25 +349,15 @@ def _auto_replace_on_upload(kind: str, dest_path: Path, uploaded) -> None:
             backup_dir=dest_path.parent / "_import_backups",
         )
 
-        # ✅ mémorise "dernier upload" (UI)
         st.session_state[sig_key] = sig
         st.session_state[up_key] = now
 
-        # ✅ INVALIDATION CIBLÉE (sans toucher aux autres)
-        # -> les loaders doivent utiliser st.session_state["data_hash"][kind]
+        # ✅ invalidation ciblée
         set_dataset_signature(kind, sig)
-
-        # ✅ optionnel : purge ciblée des caches Python lru_cache si besoin
         _targeted_python_cache_clear(kind)
 
         st.markdown(f"- **Date d’upload :** {_fmt_dt(now)}")
         st.success("✅ Import terminé. (Cache invalidé uniquement pour ce dataset)")
-
-        # ✅ IMPORTANT :
-        # On NE fait PAS st.cache_data.clear() / st.cache_resource.clear()
-        # car ça viderait le cache de TOUS les autres fichiers/datasets.
-
-        # rerun pour que les pages qui utilisent le nouveau hash se recalculent
         st.rerun()
 
     except PermissionError as e:
@@ -375,7 +374,7 @@ def _auto_replace_on_upload(kind: str, dest_path: Path, uploaded) -> None:
 def render_import(common_data_dir: Path) -> None:
     st.subheader("Import")
 
-    tab_topo, tab_inclino = st.tabs(["Topographie", "Inclinométrie"])
+    tab_topo, tab_inclino, tab_fond_plan = st.tabs(["Topographie", "Inclinométrie", "Fond de plan"])  # ✅ AJOUT
 
     with tab_topo:
         target = build_topo_target(common_data_dir)
@@ -387,7 +386,7 @@ def render_import(common_data_dir: Path) -> None:
             accept_multiple_files=False,
             label_visibility="collapsed",
         )
-        _auto_replace_on_upload("topo", target.dest_path, uploaded)
+        _auto_replace_on_upload_xlsx("topo", target.dest_path, uploaded)
 
     with tab_inclino:
         target = build_inclino_target(common_data_dir)
@@ -399,4 +398,16 @@ def render_import(common_data_dir: Path) -> None:
             accept_multiple_files=False,
             label_visibility="collapsed",
         )
-        _auto_replace_on_upload("inclino", target.dest_path, uploaded)
+        _auto_replace_on_upload_xlsx("inclino", target.dest_path, uploaded)
+
+    with tab_fond_plan:
+        target = build_fond_plan_target(common_data_dir)
+        st.markdown("### Fond de plan")
+        uploaded = st.file_uploader(
+            "",
+            type=["pdf"],
+            key="import_fond_plan_uploader",
+            accept_multiple_files=False,
+            label_visibility="collapsed",
+        )
+        _auto_replace_on_upload_pdf("fond_plan", target.dest_path, uploaded)

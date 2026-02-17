@@ -94,6 +94,34 @@ def build_inclino_target(common_data_dir: Path) -> ImportTarget:
     return ImportTarget(label="Inclinométrie", dest_path=dest, backup_dir=backup_dir)
 
 
+def build_fond_plan_target(common_data_dir: Path) -> ImportTarget:
+    """
+    Destination = un PDF fond de plan dans data/common_data.
+    Si un fond de plan existe déjà, on prend le plus récent.
+    Sinon => crée Fond_de_plan.pdf.
+    """
+    common_data_dir.mkdir(parents=True, exist_ok=True)
+
+    needles = ["fond", "plan", "fond de plan", "background", "baseplan"]
+
+    candidates: list[Path] = []
+    for p in common_data_dir.iterdir():
+        if p.is_file() and p.suffix.lower() == ".pdf":
+            stem = p.stem.lower()
+            # on accepte soit un nom "Fond_de_plan", soit tout pdf contenant des mots proches
+            if ("fond" in stem and "plan" in stem) or any(n in stem for n in needles):
+                candidates.append(p)
+
+    if candidates:
+        candidates.sort(key=lambda x: x.stat().st_mtime, reverse=True)
+        dest = candidates[0]
+    else:
+        dest = common_data_dir / "Fond_de_plan.pdf"
+
+    backup_dir = common_data_dir / "_import_backups"
+    return ImportTarget(label="Fond de plan", dest_path=dest, backup_dir=backup_dir)
+
+
 def replace_file_bytes(dest_path: Path, content: bytes, backup_dir: Path) -> None:
     """
     Remplace dest_path par le contenu (bytes).
